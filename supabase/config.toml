@@ -1,0 +1,4 @@
+project_id = "zqontzqfjrggbddxgyxb"
+
+[functions.automotive-chat]
+verify_jwt = false
