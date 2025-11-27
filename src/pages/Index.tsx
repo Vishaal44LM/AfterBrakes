@@ -1,8 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { Car } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Car, Plus, LogOut } from "lucide-react";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
+import HistoryDrawer from "@/components/HistoryDrawer";
+import ThemeToggle from "@/components/ThemeToggle";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,8 +19,17 @@ interface Message {
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -23,6 +38,37 @@ const Index = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const saveChatHistory = async (messages: Message[]) => {
+    if (!user || messages.length === 0) return;
+
+    try {
+      const title = messages[0]?.content.substring(0, 100) || 'New Chat';
+      
+      if (currentChatId) {
+        await supabase
+          .from('chat_history')
+          .update({ messages: messages as any, title })
+          .eq('id', currentChatId);
+      } else {
+        const { data } = await supabase
+          .from('chat_history')
+          .insert({
+            user_id: user.id,
+            title,
+            messages: messages as any,
+          })
+          .select()
+          .single();
+        
+        if (data) {
+          setCurrentChatId(data.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving chat:', error);
+    }
+  };
 
   const streamChat = async (userMessages: Message[]) => {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automotive-chat`;
@@ -50,7 +96,7 @@ const Index = () => {
     });
 
     if (!resp.ok) {
-      const errorData = await resp.json();
+      const errorData = await resp.json().catch(() => ({ error: "Failed to connect to AI service" }));
       throw new Error(errorData.error || "Failed to start chat");
     }
 
@@ -114,11 +160,17 @@ const Index = () => {
       images: images.length > 0 ? images : undefined,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      await streamChat([...messages, userMessage]);
+      await streamChat(newMessages);
+      
+      // Save after successful response
+      setTimeout(() => {
+        saveChatHistory(newMessages);
+      }, 1000);
     } catch (error) {
       console.error("Chat error:", error);
       toast({
@@ -132,13 +184,62 @@ const Index = () => {
     }
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentChatId(null);
+  };
+
+  const handleLoadChat = (loadedMessages: any[]) => {
+    setMessages(loadedMessages as Message[]);
+    setCurrentChatId(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <Car className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="flex items-center gap-3 px-6 py-4 border-b border-border">
-        <Car className="w-6 h-6 text-primary" />
-        <h1 className="text-xl font-semibold text-foreground">After Brakes</h1>
-        <span className="text-sm text-muted-foreground">AI Automotive Expert</span>
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <HistoryDrawer onLoadChat={handleLoadChat} />
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNewChat}
+            className="border-primary/50 hover:bg-primary/10"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Chat
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Car className="w-6 h-6 text-primary" />
+          <h1 className="text-xl font-semibold text-foreground">After Brakes</h1>
+          <span className="text-sm text-muted-foreground hidden sm:inline">AI Automotive Expert</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={signOut}
+            className="border-primary/50 hover:bg-primary/10"
+          >
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
       </header>
 
       {/* Chat Area */}
