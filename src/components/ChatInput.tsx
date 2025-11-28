@@ -1,8 +1,8 @@
-import { useState, useRef, KeyboardEvent } from "react";
-import { Send, ImagePlus, X } from "lucide-react";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { useToast } from "./ui/use-toast";
+import { useState } from "react";
+import { ImagePlus, Send, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ChatInputProps {
   onSend: (message: string, images: string[]) => void;
@@ -12,35 +12,33 @@ interface ChatInputProps {
 const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const [images, setImages] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     const newImages: string[] = [];
-    Array.from(files).forEach((file) => {
+
+    for (const file of Array.from(files)) {
       if (file.size > 20 * 1024 * 1024) {
         toast({
           title: "File too large",
           description: `${file.name} exceeds 20MB limit`,
           variant: "destructive",
         });
-        return;
+        continue;
       }
 
       const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          newImages.push(event.target.result as string);
-          if (newImages.length === files.length) {
-            setImages((prev) => [...prev, ...newImages]);
-          }
+      reader.onloadend = () => {
+        newImages.push(reader.result as string);
+        if (newImages.length === files.length) {
+          setImages((prev) => [...prev, ...newImages]);
         }
       };
       reader.readAsDataURL(file);
-    });
+    }
   };
 
   const removeImage = (index: number) => {
@@ -54,7 +52,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
     setImages([]);
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -62,19 +60,19 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border bg-background p-4">
+    <div className="w-full space-y-3">
       {images.length > 0 && (
-        <div className="flex gap-2 mb-3 overflow-x-auto">
+        <div className="flex flex-wrap gap-2 px-2">
           {images.map((img, idx) => (
-            <div key={idx} className="relative flex-shrink-0">
+            <div key={idx} className="relative group">
               <img
                 src={img}
-                alt={`Upload ${idx + 1}`}
-                className="w-16 h-16 object-cover rounded border border-primary"
+                alt={`Preview ${idx + 1}`}
+                className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-2xl border border-border/40"
               />
               <button
                 onClick={() => removeImage(idx)}
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -83,33 +81,34 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="flex gap-2 items-end">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handleImageUpload}
-        />
-        
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
-          className="flex-shrink-0 hover:bg-primary/10 border-primary/50"
-        >
-          <ImagePlus className="w-4 h-4" />
-        </Button>
+      <div className="panel-floating glow-focus p-2 flex items-end gap-2 md:gap-3">
+        <label className="cursor-pointer btn-glow hover-lift">
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+            disabled={disabled}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={disabled}
+            className="pointer-events-none h-10 w-10 md:h-11 md:w-11 rounded-full hover:bg-secondary/50"
+          >
+            <ImagePlus className="w-5 h-5 text-muted-foreground" />
+          </Button>
+        </label>
 
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about your car, bike, or upload an image..."
+          placeholder="Ask about your vehicle..."
           disabled={disabled}
-          className="min-h-[44px] max-h-32 resize-none bg-input border-border focus:border-primary"
+          className="flex-1 min-h-[44px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-body placeholder:text-muted-foreground/60"
           rows={1}
         />
 
@@ -117,9 +116,9 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           onClick={handleSend}
           disabled={disabled || (!message.trim() && images.length === 0)}
           size="icon"
-          className="flex-shrink-0 bg-primary hover:bg-primary/90"
+          className="h-10 w-10 md:h-11 md:w-11 rounded-full bg-primary hover:bg-primary/90 btn-glow hover-lift shrink-0"
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-5 h-5" />
         </Button>
       </div>
     </div>

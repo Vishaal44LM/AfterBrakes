@@ -90,7 +90,7 @@ const Index = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({ messages: messagesToSend }),
     });
@@ -167,9 +167,11 @@ const Index = () => {
     try {
       await streamChat(newMessages);
       
-      // Save after successful response
       setTimeout(() => {
-        saveChatHistory(newMessages);
+        setMessages(current => {
+          saveChatHistory(current);
+          return current;
+        });
       }, 1000);
     } catch (error) {
       console.error("Chat error:", error);
@@ -205,90 +207,110 @@ const Index = () => {
     );
   }
 
+  const isEmpty = messages.length === 0;
+
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col h-screen bg-background relative">
+      {/* Dashboard seam line at top */}
+      <div className="seam-line absolute top-0 left-0 right-0" />
+      
+      {/* Header - floating panel */}
+      <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 mx-4 md:mx-6 mt-4 mb-2 panel-floating">
+        <div className="flex items-center gap-2 md:gap-3">
           <HistoryDrawer onLoadChat={handleLoadChat} />
           
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleNewChat}
-            className="border-primary/50 hover:bg-primary/10"
+            className="btn-glow hover:bg-secondary/50 transition-smooth"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Chat
+            <span className="hidden sm:inline">New Chat</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Car className="w-6 h-6 text-primary" />
-          <h1 className="text-xl font-semibold text-foreground">After Brakes</h1>
-          <span className="text-sm text-muted-foreground hidden sm:inline">AI Automotive Expert</span>
+        <div className="flex items-center gap-2 md:gap-3">
+          <Car className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+          <h1 className="text-base md:text-xl font-semibold text-foreground">After Brakes</h1>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={signOut}
-            className="border-primary/50 hover:bg-primary/10"
+            className="btn-glow hover:bg-secondary/50 transition-smooth"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
         </div>
       </header>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {messages.length === 0 && (
-            <div className="text-center py-12">
-              <Car className="w-16 h-16 text-primary mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-foreground mb-2">
+      {/* Chat Area or Empty State */}
+      {isEmpty ? (
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="w-full max-w-3xl">
+            {/* Welcome card with vignette */}
+            <div className="card-vignette p-8 md:p-12 mb-8 text-center">
+              <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6" />
+              <h2 className="text-heading text-foreground mb-3 md:mb-4">
                 Welcome to After Brakes
               </h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
+              <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">
                 Your AI automotive expert for cars, bikes, and motorsports. Ask questions, get diagnostics help, or upload images for analysis.
               </p>
             </div>
-          )}
 
-          {messages.map((msg, idx) => (
-            <ChatMessage
-              key={idx}
-              role={msg.role}
-              content={msg.content}
-              images={msg.images}
-            />
-          ))}
-
-          {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <Car className="w-4 h-4 text-primary animate-pulse" />
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+            {/* Centered input */}
+            <ChatInput onSend={handleSend} disabled={isLoading} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6">
+            <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
+              {messages.map((msg, idx) => (
+                <ChatMessage
+                  key={idx}
+                  role={msg.role}
+                  content={msg.content}
+                  images={msg.images}
+                />
+              ))}
 
-      {/* Input Area */}
-      <div className="max-w-4xl mx-auto w-full">
-        <ChatInput onSend={handleSend} disabled={isLoading} />
-      </div>
+              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40">
+                    <Car className="w-4 h-4 text-primary animate-pulse" />
+                  </div>
+                  <div className="message-assistant">
+                    <div className="flex gap-1.5">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Input at bottom */}
+          <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm">
+            <div className="max-w-4xl mx-auto w-full px-4 py-4">
+              <ChatInput onSend={handleSend} disabled={isLoading} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Dashboard seam line at bottom */}
+      <div className="seam-line absolute bottom-0 left-0 right-0" />
     </div>
   );
 };
