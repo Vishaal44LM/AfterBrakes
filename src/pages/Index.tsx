@@ -259,7 +259,7 @@ const Index = () => {
                 Welcome to After Brakes
               </h2>
               <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">
-                Your AI automotive expert for cars, bikes, and motorsports. Ask questions, get diagnostics help, or upload images for analysis.
+                Your AI pit crew for every drive.
               </p>
             </div>
 
