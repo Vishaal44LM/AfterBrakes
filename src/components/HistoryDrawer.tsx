@@ -1,32 +1,19 @@
-import { useState, useEffect } from 'react';
-import { History, X, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  images?: string[];
-}
+import { useState, useEffect } from "react";
+import { History, X, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ChatHistory {
   id: string;
   title: string;
-  vehicle_tag: string | null;
   created_at: string;
-  messages: Message[];
+  vehicle_tag?: string;
+  messages: any[];
 }
 
 interface HistoryDrawerProps {
@@ -35,20 +22,16 @@ interface HistoryDrawerProps {
 
 const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
   const [open, setOpen] = useState(false);
-  const [history, setHistory] = useState<ChatHistory[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [chats, setChats] = useState<ChatHistory[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open && user) {
-      loadHistory();
-    }
-  }, [open, user]);
-
-  const loadHistory = async () => {
+  const fetchChats = async () => {
     if (!user) return;
-
+    
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('chat_history')
@@ -57,29 +40,37 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setHistory((data || []).map(chat => ({
+      setChats((data || []).map(chat => ({
         ...chat,
-        messages: chat.messages as any as Message[]
+        messages: chat.messages as any as any[]
       })));
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Error fetching chats:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load chat history',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to load chat history",
+        variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open) {
+      fetchChats();
+    }
+  }, [open, user]);
+
+  const filteredChats = chats.filter(chat =>
+    chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.vehicle_tag?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleLoadChat = (chat: ChatHistory) => {
     onLoadChat(chat.messages);
     setOpen(false);
   };
-
-  const filteredHistory = history.filter(
-    (chat) =>
-      chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.vehicle_tag?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -95,71 +86,70 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
     return date.toLocaleDateString();
   };
 
-  if (!user) return null;
-
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button variant="outline" size="icon" className="border-primary/50 hover:bg-primary/10">
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="btn-glow hover:bg-secondary/50 transition-smooth"
+        >
           <History className="w-5 h-5" />
         </Button>
-      </DrawerTrigger>
-      <DrawerContent className="h-[90vh] bg-background border-border">
-        <DrawerHeader className="border-b border-border">
-          <div className="flex items-center justify-between">
-            <DrawerTitle className="text-foreground">Chat History</DrawerTitle>
-            <DrawerClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="w-5 h-5" />
-              </Button>
-            </DrawerClose>
-          </div>
-          <div className="mt-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search chats..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </DrawerHeader>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[90vw] md:w-[400px] bg-background border-r border-border/40 p-0">
+        <div className="flex flex-col h-full">
+          <SheetHeader className="p-4 md:p-6 border-b border-border/40">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-heading">Chat History</SheetTitle>
+            </div>
+            <div className="mt-4 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search chats..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-card border-border/40 rounded-full"
+              />
+            </div>
+          </SheetHeader>
 
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-2">
-            {filteredHistory.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchQuery ? 'No chats found' : 'No chat history yet'}
+          <ScrollArea className="flex-1 px-4 md:px-6">
+            {loading ? (
+              <div className="py-8 text-center text-muted-foreground text-small">
+                Loading...
+              </div>
+            ) : filteredChats.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-small">
+                {searchQuery ? "No chats found" : "No chat history yet"}
               </div>
             ) : (
-              filteredHistory.map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => handleLoadChat(chat)}
-                  className="w-full text-left bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">
-                        {chat.title}
-                      </h3>
+              <div className="space-y-3 py-4">
+                {filteredChats.map((chat) => (
+                  <button
+                    key={chat.id}
+                    onClick={() => handleLoadChat(chat)}
+                    className="w-full text-left p-4 rounded-2xl bg-card border border-border/40 hover:border-primary/40 transition-smooth btn-glow group"
+                  >
+                    <h3 className="text-body font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                      {chat.title}
+                    </h3>
+                    <div className="flex items-center justify-between text-small text-muted-foreground">
+                      <span>{formatDate(chat.created_at)}</span>
                       {chat.vehicle_tag && (
-                        <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-primary/20 text-primary border border-primary/30">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
                           {chat.vehicle_tag}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(chat.created_at)}
-                    </span>
-                  </div>
-                </button>
-              ))
+                  </button>
+                ))}
+              </div>
             )}
-          </div>
-        </ScrollArea>
-      </DrawerContent>
-    </Drawer>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
