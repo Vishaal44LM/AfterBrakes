@@ -63,7 +63,7 @@ const Auth = () => {
         {/* Logo and title card */}
         <div className="card-vignette p-8 mb-8 text-center">
           <Car className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h1 className="text-heading logo-text bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent mb-2">After Brakes</h1>
+          <h1 className="text-heading text-foreground mb-2">After Brakes</h1>
           <p className="text-body text-muted-foreground">AI Automotive Expert</p>
         </div>
 

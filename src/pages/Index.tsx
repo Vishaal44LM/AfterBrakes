@@ -232,7 +232,7 @@ const Index = () => {
 
         <div className="flex items-center gap-2 md:gap-3">
           <Car className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-          <h1 className="text-base md:text-xl logo-text bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">After Brakes</h1>
+          <h1 className="text-base md:text-xl font-semibold text-foreground">After Brakes</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -255,7 +255,7 @@ const Index = () => {
             {/* Welcome card with vignette */}
             <div className="card-vignette p-8 md:p-12 mb-8 text-center animate-fade-slide-up">
               <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6 animate-pulse-slow" />
-              <h2 className="text-heading text-foreground mb-3 md:mb-4 logo-text">
+              <h2 className="text-heading text-foreground mb-3 md:mb-4">
                 Welcome to After Brakes
               </h2>
               <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">

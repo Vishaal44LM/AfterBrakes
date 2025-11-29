@@ -82,7 +82,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
       )}
 
       <div className="panel-floating focus-lift p-2 flex items-end gap-2 md:gap-3">
-        <label className="cursor-pointer transition-smooth shrink-0">
+        <label className="cursor-pointer btn-glow hover-lift transition-smooth">
           <input
             type="file"
             multiple
@@ -91,9 +91,15 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             className="hidden"
             disabled={disabled}
           />
-          <div className="h-10 w-10 md:h-11 md:w-11 rounded-full bg-secondary/50 hover:bg-secondary hover:brightness-110 active:scale-95 flex items-center justify-center btn-glow hover-lift transition-all duration-150">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={disabled}
+            className="pointer-events-none h-10 w-10 md:h-11 md:w-11 rounded-full hover:bg-secondary/50"
+          >
             <ImagePlus className="w-5 h-5 text-muted-foreground" />
-          </div>
+          </Button>
         </label>
 
         <Textarea

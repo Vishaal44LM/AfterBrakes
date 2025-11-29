@@ -44,13 +44,10 @@ export const useTheme = () => {
   }, [user]);
 
   const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement;
     if (newTheme === 'light') {
-      root.classList.remove('dark');
-      root.classList.add('light');
+      document.documentElement.classList.remove('dark');
     } else {
-      root.classList.remove('light');
-      root.classList.add('dark');
+      document.documentElement.classList.add('dark');
     }
   };
 
