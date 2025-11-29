@@ -104,13 +104,13 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-weight: 600;
   }
 }
@@ -128,10 +128,27 @@
     transition: box-shadow 0.3s ease;
   }
 
-  /* Button with purple glow on hover */
+  /* Premium button interactions */
+  .btn-glow {
+    transition: all 0.15s ease-out;
+  }
+
   .btn-glow:hover {
     box-shadow: 0 0 20px hsl(262 44% 43% / 0.4);
-    transition: box-shadow 0.3s ease;
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  .btn-glow:active {
+    transform: translateY(0) scale(0.95);
+    filter: brightness(0.9);
+    box-shadow: 0 0 10px hsl(262 44% 43% / 0.3);
+  }
+
+  /* Active/toggled button state */
+  .btn-active {
+    filter: brightness(1.15);
+    box-shadow: 0 0 20px hsl(262 44% 43% / 0.5);
   }
 
   /* Message bubble styles */
@@ -206,10 +223,19 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Hover scale */
+  /* Hover lift with enhanced interaction */
+  .hover-lift {
+    transition: all 0.15s ease-out;
+  }
+
   .hover-lift:hover {
-    @apply transform -translate-y-0.5;
-    transition: transform 0.2s ease;
+    @apply transform -translate-y-1;
+    filter: brightness(1.1);
+  }
+
+  .hover-lift:active {
+    @apply transform translate-y-0 scale-95;
+    filter: brightness(0.9);
   }
 
   /* Micro-interaction animations */
@@ -291,10 +317,18 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Send button tap feedback */
+  /* Send button tap feedback - enhanced */
+  .btn-tap {
+    transition: all 0.15s ease-out;
+  }
+
+  .btn-tap:hover {
+    transform: translateY(-1px) scale(1.02);
+  }
+
   .btn-tap:active {
-    @apply transform scale-95;
-    transition: transform 0.1s ease;
+    transform: translateY(0) scale(0.95);
+    filter: brightness(0.9);
   }
 
   /* Loading progress bar */
