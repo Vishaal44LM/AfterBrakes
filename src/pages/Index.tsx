@@ -253,8 +253,8 @@ const Index = () => {
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="w-full max-w-3xl">
             {/* Welcome card with vignette */}
-            <div className="card-vignette p-8 md:p-12 mb-8 text-center">
-              <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6" />
+            <div className="card-vignette p-8 md:p-12 mb-8 text-center animate-fade-slide-up">
+              <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6 animate-pulse-slow" />
               <h2 className="text-heading text-foreground mb-3 md:mb-4">
                 Welcome to After Brakes
               </h2>
@@ -264,11 +264,18 @@ const Index = () => {
             </div>
 
             {/* Centered input */}
-            <ChatInput onSend={handleSend} disabled={isLoading} />
+            <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
+              <ChatInput onSend={handleSend} disabled={isLoading} />
+            </div>
           </div>
         </div>
       ) : (
         <>
+          {/* Loading progress bar */}
+          {isLoading && (
+            <div className="progress-bar absolute top-0 left-0 right-0 z-50" />
+          )}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6">
             <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">

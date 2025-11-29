@@ -81,8 +81,8 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="panel-floating glow-focus p-2 flex items-end gap-2 md:gap-3">
-        <label className="cursor-pointer btn-glow hover-lift">
+      <div className="panel-floating focus-lift p-2 flex items-end gap-2 md:gap-3">
+        <label className="cursor-pointer btn-glow hover-lift transition-smooth">
           <input
             type="file"
             multiple
@@ -116,7 +116,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           onClick={handleSend}
           disabled={disabled || (!message.trim() && images.length === 0)}
           size="icon"
-          className="h-10 w-10 md:h-11 md:w-11 rounded-full bg-primary hover:bg-primary/90 btn-glow hover-lift shrink-0"
+          className="h-10 w-10 md:h-11 md:w-11 rounded-full bg-primary hover:bg-primary/90 btn-glow hover-lift btn-tap shrink-0 transition-smooth"
         >
           <Send className="w-5 h-5" />
         </Button>

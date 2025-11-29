@@ -10,7 +10,7 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
   const isUser = role === "user";
 
   return (
-    <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex gap-3 ${isUser ? "justify-end animate-fade-slide-right" : "justify-start animate-fade-slide-left"}`}>
       {!isUser && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40 mt-1">
           <Wrench className="w-4 h-4 text-primary" />
