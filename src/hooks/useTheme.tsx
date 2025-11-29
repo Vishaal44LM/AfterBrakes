@@ -6,7 +6,16 @@ export type Theme = 'dark' | 'light';
 
 export const useTheme = () => {
   const { user } = useAuth();
-  const [theme, setTheme] = useState<Theme>('dark');
+  // Get initial theme from localStorage or default to dark
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('theme') as Theme | null;
+    return saved || 'dark';
+  });
+
+  // Apply theme immediately on mount
+  useEffect(() => {
+    applyTheme(theme);
+  }, []);
 
   useEffect(() => {
     // Load theme from profile or localStorage
