@@ -9,58 +9,55 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-
 interface Message {
   role: "user" | "assistant";
   content: string;
   images?: string[];
 }
-
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const { user, signOut, loading } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    signOut,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
-
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth"
+    });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
   const saveChatHistory = async (messages: Message[]) => {
     if (!user || messages.length === 0) return;
-
     try {
       const title = messages[0]?.content.substring(0, 100) || 'New Chat';
-      
       if (currentChatId) {
-        await supabase
-          .from('chat_history')
-          .update({ messages: messages as any, title })
-          .eq('id', currentChatId);
+        await supabase.from('chat_history').update({
+          messages: messages as any,
+          title
+        }).eq('id', currentChatId);
       } else {
-        const { data } = await supabase
-          .from('chat_history')
-          .insert({
-            user_id: user.id,
-            title,
-            messages: messages as any,
-          })
-          .select()
-          .single();
-        
+        const {
+          data
+        } = await supabase.from('chat_history').insert({
+          user_id: user.id,
+          title,
+          messages: messages as any
+        }).select().single();
         if (data) {
           setCurrentChatId(data.id);
         }
@@ -69,80 +66,80 @@ const Index = () => {
       console.error('Error saving chat:', error);
     }
   };
-
   const streamChat = async (userMessages: Message[]) => {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automotive-chat`;
-    
     const messagesToSend = userMessages.map(msg => ({
       role: msg.role,
-      content: msg.images && msg.images.length > 0
-        ? [
-            { type: "text", text: msg.content },
-            ...msg.images.map(img => ({
-              type: "image_url",
-              image_url: { url: img }
-            }))
-          ]
-        : msg.content
+      content: msg.images && msg.images.length > 0 ? [{
+        type: "text",
+        text: msg.content
+      }, ...msg.images.map(img => ({
+        type: "image_url",
+        image_url: {
+          url: img
+        }
+      }))] : msg.content
     }));
-
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
       },
-      body: JSON.stringify({ messages: messagesToSend }),
+      body: JSON.stringify({
+        messages: messagesToSend
+      })
     });
-
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({ error: "Failed to connect to AI service" }));
+      const errorData = await resp.json().catch(() => ({
+        error: "Failed to connect to AI service"
+      }));
       throw new Error(errorData.error || "Failed to start chat");
     }
-
     if (!resp.body) throw new Error("No response body");
-
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let textBuffer = "";
     let streamDone = false;
     let assistantContent = "";
-
     while (!streamDone) {
-      const { done, value } = await reader.read();
+      const {
+        done,
+        value
+      } = await reader.read();
       if (done) break;
-      
-      textBuffer += decoder.decode(value, { stream: true });
-
+      textBuffer += decoder.decode(value, {
+        stream: true
+      });
       let newlineIndex: number;
       while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
         let line = textBuffer.slice(0, newlineIndex);
         textBuffer = textBuffer.slice(newlineIndex + 1);
-
         if (line.endsWith("\r")) line = line.slice(0, -1);
         if (line.startsWith(":") || line.trim() === "") continue;
         if (!line.startsWith("data: ")) continue;
-
         const jsonStr = line.slice(6).trim();
         if (jsonStr === "[DONE]") {
           streamDone = true;
           break;
         }
-
         try {
           const parsed = JSON.parse(jsonStr);
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-          
           if (content) {
             assistantContent += content;
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === "assistant") {
-                return prev.map((m, i) =>
-                  i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                );
+                return prev.map((m, i) => i === prev.length - 1 ? {
+                  ...m,
+                  content: assistantContent
+                } : m);
               }
-              return [...prev, { role: "assistant", content: assistantContent }];
+              return [...prev, {
+                role: "assistant",
+                content: assistantContent
+              }];
             });
           }
         } catch {
@@ -152,21 +149,17 @@ const Index = () => {
       }
     }
   };
-
   const handleSend = async (message: string, images: string[]) => {
     const userMessage: Message = {
       role: "user",
       content: message,
-      images: images.length > 0 ? images : undefined,
+      images: images.length > 0 ? images : undefined
     };
-
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setIsLoading(true);
-
     try {
       await streamChat(newMessages);
-      
       setTimeout(() => {
         setMessages(current => {
           saveChatHistory(current);
@@ -178,39 +171,31 @@ const Index = () => {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",
-        variant: "destructive",
+        variant: "destructive"
       });
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleNewChat = () => {
     setMessages([]);
     setCurrentChatId(null);
   };
-
   const handleLoadChat = (loadedMessages: any[]) => {
     setMessages(loadedMessages as Message[]);
     setCurrentChatId(null);
   };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+    return <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <Car className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   const isEmpty = messages.length === 0;
-
-  return (
-    <div className="flex flex-col h-screen bg-background relative">
+  return <div className="flex flex-col h-screen bg-background relative">
       {/* Dashboard seam line at top */}
       <div className="seam-line absolute top-0 left-0 right-0" />
       
@@ -219,12 +204,7 @@ const Index = () => {
         <div className="flex items-center gap-2 md:gap-3">
           <HistoryDrawer onLoadChat={handleLoadChat} />
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNewChat}
-            className="btn-glow hover:bg-secondary/50 transition-smooth"
-          >
+          <Button variant="ghost" size="sm" onClick={handleNewChat} className="btn-glow hover:bg-secondary/50 transition-smooth">
             <Plus className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">New Chat</span>
           </Button>
@@ -232,76 +212,65 @@ const Index = () => {
 
         <div className="flex items-center gap-2 md:gap-3">
           <Car className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-          <h1 className="text-base md:text-xl font-semibold text-foreground">After Brakes</h1>
+          <h1 className="text-base font-semibold text-foreground font-serif md:text-xl">After Brakes</h1>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={signOut}
-            className="btn-glow hover:bg-secondary/50 transition-smooth"
-          >
+          <Button variant="ghost" size="icon" onClick={signOut} className="btn-glow hover:bg-secondary/50 transition-smooth">
             <LogOut className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
         </div>
       </header>
 
       {/* Chat Area or Empty State */}
-      {isEmpty ? (
-        <div className="flex-1 flex items-center justify-center px-4">
+      {isEmpty ? <div className="flex-1 flex items-center justify-center px-4">
           <div className="w-full max-w-3xl">
             {/* Welcome card with vignette */}
             <div className="card-vignette p-8 md:p-12 mb-8 text-center animate-fade-slide-up">
               <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6 animate-pulse-slow" />
-              <h2 className="text-heading text-foreground mb-3 md:mb-4">
+              <h2 className="text-heading text-foreground mb-3 md:mb-4 font-serif">
                 Welcome to After Brakes
               </h2>
               <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">
-                Your AI pit crew for every drive.
+                Your  pit crew for every drive.
               </p>
             </div>
 
             {/* Centered input */}
-            <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
+            <div className="animate-fade-slide-up" style={{
+          animationDelay: '100ms'
+        }}>
               <ChatInput onSend={handleSend} disabled={isLoading} />
             </div>
           </div>
-        </div>
-      ) : (
-        <>
+        </div> : <>
           {/* Loading progress bar */}
-          {isLoading && (
-            <div className="progress-bar absolute top-0 left-0 right-0 z-50" />
-          )}
+          {isLoading && <div className="progress-bar absolute top-0 left-0 right-0 z-50" />}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6">
             <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
-              {messages.map((msg, idx) => (
-                <ChatMessage
-                  key={idx}
-                  role={msg.role}
-                  content={msg.content}
-                  images={msg.images}
-                />
-              ))}
+              {messages.map((msg, idx) => <ChatMessage key={idx} role={msg.role} content={msg.content} images={msg.images} />)}
 
-              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-                <div className="flex gap-3">
+              {isLoading && messages[messages.length - 1]?.role !== "assistant" && <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40">
                     <Car className="w-4 h-4 text-primary animate-pulse" />
                   </div>
                   <div className="message-assistant">
                     <div className="flex gap-1.5">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
+                  animationDelay: "0ms"
+                }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
+                  animationDelay: "150ms"
+                }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
+                  animationDelay: "300ms"
+                }} />
                     </div>
                   </div>
-                </div>
-              )}
+                </div>}
 
               <div ref={messagesEndRef} />
             </div>
@@ -313,13 +282,10 @@ const Index = () => {
               <ChatInput onSend={handleSend} disabled={isLoading} />
             </div>
           </div>
-        </>
-      )}
+        </>}
 
       {/* Dashboard seam line at bottom */}
       <div className="seam-line absolute bottom-0 left-0 right-0" />
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
