@@ -1,13 +1,27 @@
-import { User, Wrench } from "lucide-react";
+import { User, Wrench, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SeverityIndicator, { SeverityLevel } from "./SeverityIndicator";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   images?: string[];
+  onShare?: () => void;
 }
 
-const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
+const parseSeverity = (content: string): { severity: SeverityLevel; cleanContent: string } => {
+  const severityMatch = content.match(/^\[SEVERITY:(safe|caution|danger)\]/i);
+  if (severityMatch) {
+    const severity = severityMatch[1].toLowerCase() as SeverityLevel;
+    const cleanContent = content.replace(severityMatch[0], "").trim();
+    return { severity, cleanContent };
+  }
+  return { severity: null, cleanContent: content };
+};
+
+const ChatMessage = ({ role, content, images, onShare }: ChatMessageProps) => {
   const isUser = role === "user";
+  const { severity, cleanContent } = isUser ? { severity: null, cleanContent: content } : parseSeverity(content);
 
   return (
     <div className={`flex gap-3 ${isUser ? "justify-end animate-fade-slide-right" : "justify-start animate-fade-slide-left"}`}>
@@ -17,8 +31,10 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
         </div>
       )}
       
-      <div className={`${isUser ? "order-first" : ""}`}>
+      <div className={`${isUser ? "order-first" : ""} relative group`}>
         <div className={isUser ? "message-user" : "message-assistant"}>
+          {!isUser && severity && <SeverityIndicator severity={severity} />}
+          
           {images && images.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {images.map((img, idx) => (
@@ -32,8 +48,7 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
             </div>
           )}
           <div className="text-body">
-            {content.split('\n\n').map((paragraph, idx) => {
-              // Check if paragraph is a numbered list
+            {cleanContent.split('\n\n').map((paragraph, idx) => {
               if (/^\d+\./.test(paragraph)) {
                 const items = paragraph.split('\n').filter(line => /^\d+\./.test(line));
                 return (
@@ -46,7 +61,6 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
                   </ol>
                 );
               }
-              // Check if paragraph is a bullet list
               else if (/^[-•]/.test(paragraph)) {
                 const items = paragraph.split('\n').filter(line => /^[-•]/.test(line));
                 return (
@@ -59,7 +73,6 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
                   </ul>
                 );
               }
-              // Regular paragraph
               else if (paragraph.trim()) {
                 return (
                   <p key={idx} className="mb-3 last:mb-0 leading-relaxed">
@@ -71,6 +84,18 @@ const ChatMessage = ({ role, content, images }: ChatMessageProps) => {
             })}
           </div>
         </div>
+        
+        {!isUser && onShare && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onShare}
+            className="absolute -bottom-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 hover:bg-card border border-border/40"
+            title="Share with mechanic"
+          >
+            <Share2 className="w-3 h-3" />
+          </Button>
+        )}
       </div>
 
       {isUser && (

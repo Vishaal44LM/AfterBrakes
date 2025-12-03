@@ -5,58 +5,72 @@ import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import ThemeToggle from "@/components/ThemeToggle";
+import GaragePill from "@/components/GaragePill";
+import GarageSelector from "@/components/GarageSelector";
+import MechanicSummary from "@/components/MechanicSummary";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import { supabase } from "@/integrations/supabase/client";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   images?: string[];
 }
+
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [showGarageSelector, setShowGarageSelector] = useState(false);
+  const [showMechanicSummary, setShowMechanicSummary] = useState(false);
+  const [vehicleToast, setVehicleToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const {
-    toast
-  } = useToast();
-  const {
-    user,
-    signOut,
-    loading
-  } = useAuth();
+  const { toast } = useToast();
+  const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  
+  const { vehicles, activeVehicle, setActiveVehicle, refresh: refreshVehicles } = useVehicles(user?.id);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth"
-    });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-  const saveChatHistory = async (messages: Message[]) => {
-    if (!user || messages.length === 0) return;
+
+  useEffect(() => {
+    if (vehicleToast) {
+      const timer = setTimeout(() => setVehicleToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [vehicleToast]);
+
+  const saveChatHistory = async (msgs: Message[]) => {
+    if (!user || msgs.length === 0) return;
     try {
-      const title = messages[0]?.content.substring(0, 100) || 'New Chat';
+      const title = msgs[0]?.content.substring(0, 100) || 'New Chat';
       if (currentChatId) {
         await supabase.from('chat_history').update({
-          messages: messages as any,
-          title
+          messages: msgs as any,
+          title,
+          vehicle_id: activeVehicle?.id || null,
         }).eq('id', currentChatId);
       } else {
-        const {
-          data
-        } = await supabase.from('chat_history').insert({
+        const { data } = await supabase.from('chat_history').insert({
           user_id: user.id,
           title,
-          messages: messages as any
+          messages: msgs as any,
+          vehicle_id: activeVehicle?.id || null,
         }).select().single();
         if (data) {
           setCurrentChatId(data.id);
@@ -66,6 +80,7 @@ const Index = () => {
       console.error('Error saving chat:', error);
     }
   };
+
   const streamChat = async (userMessages: Message[]) => {
     const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automotive-chat`;
     const messagesToSend = userMessages.map(msg => ({
@@ -75,11 +90,10 @@ const Index = () => {
         text: msg.content
       }, ...msg.images.map(img => ({
         type: "image_url",
-        image_url: {
-          url: img
-        }
+        image_url: { url: img }
       }))] : msg.content
     }));
+
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
@@ -87,30 +101,31 @@ const Index = () => {
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
-        messages: messagesToSend
+        messages: messagesToSend,
+        vehicle: activeVehicle ? {
+          manufacturer: activeVehicle.manufacturer,
+          model: activeVehicle.model,
+          year: activeVehicle.year,
+        } : null,
       })
     });
+
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({
-        error: "Failed to connect to AI service"
-      }));
+      const errorData = await resp.json().catch(() => ({ error: "Failed to connect to AI service" }));
       throw new Error(errorData.error || "Failed to start chat");
     }
     if (!resp.body) throw new Error("No response body");
+
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let textBuffer = "";
     let streamDone = false;
     let assistantContent = "";
+
     while (!streamDone) {
-      const {
-        done,
-        value
-      } = await reader.read();
+      const { done, value } = await reader.read();
       if (done) break;
-      textBuffer += decoder.decode(value, {
-        stream: true
-      });
+      textBuffer += decoder.decode(value, { stream: true });
       let newlineIndex: number;
       while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
         let line = textBuffer.slice(0, newlineIndex);
@@ -131,15 +146,9 @@ const Index = () => {
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === "assistant") {
-                return prev.map((m, i) => i === prev.length - 1 ? {
-                  ...m,
-                  content: assistantContent
-                } : m);
+                return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
               }
-              return [...prev, {
-                role: "assistant",
-                content: assistantContent
-              }];
+              return [...prev, { role: "assistant", content: assistantContent }];
             });
           }
         } catch {
@@ -149,6 +158,7 @@ const Index = () => {
       }
     }
   };
+
   const handleSend = async (message: string, images: string[]) => {
     const userMessage: Message = {
       role: "user",
@@ -178,32 +188,42 @@ const Index = () => {
       setIsLoading(false);
     }
   };
+
   const handleNewChat = () => {
     setMessages([]);
     setCurrentChatId(null);
   };
+
   const handleLoadChat = (loadedMessages: any[]) => {
     setMessages(loadedMessages as Message[]);
     setCurrentChatId(null);
   };
+
+  const handleSelectVehicle = (vehicle: Vehicle) => {
+    setActiveVehicle(vehicle);
+    setVehicleToast(`Now diagnosing: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year}`);
+  };
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen bg-background">
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <Car className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
+
   const isEmpty = messages.length === 0;
-  return <div className="flex flex-col h-screen bg-background relative">
-      {/* Dashboard seam line at top */}
+
+  return (
+    <div className="flex flex-col h-screen bg-background relative">
       <div className="seam-line absolute top-0 left-0 right-0" />
       
-      {/* Header - floating panel */}
       <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 mx-4 md:mx-6 mt-4 mb-2 panel-floating">
         <div className="flex items-center gap-2 md:gap-3">
           <HistoryDrawer onLoadChat={handleLoadChat} />
-          
           <Button variant="ghost" size="sm" onClick={handleNewChat} className="btn-glow hover:bg-secondary/50 transition-smooth">
             <Plus className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">New Chat</span>
@@ -223,69 +243,98 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Chat Area or Empty State */}
-      {isEmpty ? <div className="flex-1 flex items-center justify-center px-4">
+      <div className="px-4 mb-2">
+        <GaragePill vehicle={activeVehicle} onClick={() => setShowGarageSelector(true)} />
+      </div>
+
+      {vehicleToast && (
+        <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
+          <span className="text-sm text-foreground">{vehicleToast}</span>
+        </div>
+      )}
+
+      {isEmpty ? (
+        <div className="flex-1 flex items-center justify-center px-4">
           <div className="w-full max-w-3xl">
-            {/* Welcome card with vignette */}
             <div className="card-vignette p-8 md:p-12 mb-8 text-center animate-fade-slide-up">
               <Car className="w-12 h-12 md:w-16 md:h-16 text-primary mx-auto mb-4 md:mb-6 animate-pulse-slow" />
               <h2 className="text-heading text-foreground mb-3 md:mb-4 font-serif">
                 Welcome to After Brakes
               </h2>
               <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">
-                Your  pit crew for every drive.
+                Your AI pit crew for every drive.
               </p>
             </div>
-
-            {/* Centered input */}
-            <div className="animate-fade-slide-up" style={{
-          animationDelay: '100ms'
-        }}>
+            <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
               <ChatInput onSend={handleSend} disabled={isLoading} />
             </div>
           </div>
-        </div> : <>
-          {/* Loading progress bar */}
+        </div>
+      ) : (
+        <>
           {isLoading && <div className="progress-bar absolute top-0 left-0 right-0 z-50" />}
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6">
             <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
-              {messages.map((msg, idx) => <ChatMessage key={idx} role={msg.role} content={msg.content} images={msg.images} />)}
+              {messages.map((msg, idx) => (
+                <ChatMessage
+                  key={idx}
+                  role={msg.role}
+                  content={msg.content}
+                  images={msg.images}
+                  onShare={msg.role === "assistant" ? () => setShowMechanicSummary(true) : undefined}
+                />
+              ))}
 
-              {isLoading && messages[messages.length - 1]?.role !== "assistant" && <div className="flex gap-3">
+              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+                <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40">
                     <Car className="w-4 h-4 text-primary animate-pulse" />
                   </div>
                   <div className="message-assistant">
                     <div className="flex gap-1.5">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
-                  animationDelay: "0ms"
-                }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
-                  animationDelay: "150ms"
-                }} />
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{
-                  animationDelay: "300ms"
-                }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>
                   </div>
-                </div>}
+                </div>
+              )}
 
               <div ref={messagesEndRef} />
             </div>
           </div>
 
-          {/* Input at bottom */}
           <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm">
             <div className="max-w-4xl mx-auto w-full px-4 py-4">
               <ChatInput onSend={handleSend} disabled={isLoading} />
             </div>
           </div>
-        </>}
+        </>
+      )}
 
-      {/* Dashboard seam line at bottom */}
       <div className="seam-line absolute bottom-0 left-0 right-0" />
-    </div>;
+
+      {showGarageSelector && user && (
+        <GarageSelector
+          vehicles={vehicles}
+          activeVehicle={activeVehicle}
+          onSelect={handleSelectVehicle}
+          onClose={() => setShowGarageSelector(false)}
+          onRefresh={refreshVehicles}
+          userId={user.id}
+        />
+      )}
+
+      {showMechanicSummary && (
+        <MechanicSummary
+          messages={messages}
+          vehicle={activeVehicle}
+          onClose={() => setShowMechanicSummary(false)}
+        />
+      )}
+    </div>
+  );
 };
+
 export default Index;

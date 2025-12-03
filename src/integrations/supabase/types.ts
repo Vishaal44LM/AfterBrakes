@@ -22,6 +22,7 @@ export type Database = {
           title: string
           updated_at: string | null
           user_id: string
+          vehicle_id: string | null
           vehicle_tag: string | null
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           title: string
           updated_at?: string | null
           user_id: string
+          vehicle_id?: string | null
           vehicle_tag?: string | null
         }
         Update: {
@@ -40,9 +42,18 @@ export type Database = {
           title?: string
           updated_at?: string | null
           user_id?: string
+          vehicle_id?: string | null
           vehicle_tag?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -68,6 +79,39 @@ export type Database = {
           id?: string
           theme?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          manufacturer: string
+          model: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          manufacturer: string
+          model: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string
+          model?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
         }
         Relationships: []
       }
