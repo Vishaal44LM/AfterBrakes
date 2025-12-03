@@ -38,54 +38,82 @@ const GarageSelector = ({
   const { toast } = useToast();
 
   const handleAdd = async () => {
-    if (!manufacturer || !model || !year) {
+    const trimmedManufacturer = manufacturer.trim();
+    const trimmedModel = model.trim();
+    const trimmedYear = year.trim();
+
+    if (!trimmedManufacturer || !trimmedModel || !trimmedYear) {
       toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+
+    const yearNum = parseInt(trimmedYear);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
+      toast({ title: "Please enter a valid year", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.from("vehicles").insert({
+      const { data, error } = await supabase.from("vehicles").insert({
         user_id: userId,
-        manufacturer,
-        model,
-        year: parseInt(year),
+        manufacturer: trimmedManufacturer,
+        model: trimmedModel,
+        year: yearNum,
         is_active: vehicles.length === 0,
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Insert error:", error);
+        throw error;
+      }
 
       setManufacturer("");
       setModel("");
       setYear("");
       setIsAdding(false);
       onRefresh();
-      toast({ title: "Vehicle added" });
+      toast({ title: "Vehicle added successfully" });
+      
+      // Auto-select if first vehicle
+      if (vehicles.length === 0 && data) {
+        onSelect(data as Vehicle);
+      }
     } catch (error) {
-      toast({ title: "Failed to add vehicle", variant: "destructive" });
+      console.error("Failed to add vehicle:", error);
+      toast({ 
+        title: "Failed to add vehicle", 
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       const { error } = await supabase.from("vehicles").delete().eq("id", id);
       if (error) throw error;
       onRefresh();
       toast({ title: "Vehicle removed" });
     } catch (error) {
+      console.error("Delete error:", error);
       toast({ title: "Failed to remove vehicle", variant: "destructive" });
     }
   };
 
   const handleSelect = async (vehicle: Vehicle) => {
     try {
+      // Deactivate all vehicles first
       await supabase.from("vehicles").update({ is_active: false }).eq("user_id", userId);
+      // Activate selected vehicle
       await supabase.from("vehicles").update({ is_active: true }).eq("id", vehicle.id);
-      onSelect(vehicle);
+      onSelect({ ...vehicle, is_active: true });
       onClose();
     } catch (error) {
+      console.error("Select error:", error);
       toast({ title: "Failed to select vehicle", variant: "destructive" });
     }
   };
@@ -128,10 +156,7 @@ const GarageSelector = ({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 hover:bg-destructive/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(vehicle.id);
-                  }}
+                  onClick={(e) => handleDelete(vehicle.id, e)}
                 >
                   <Trash2 className="w-4 h-4 text-muted-foreground" />
                 </Button>
@@ -153,19 +178,24 @@ const GarageSelector = ({
               value={manufacturer}
               onChange={(e) => setManufacturer(e.target.value)}
               className="bg-background/50"
+              disabled={isLoading}
             />
             <Input
               placeholder="Model (e.g., Baleno)"
               value={model}
               onChange={(e) => setModel(e.target.value)}
               className="bg-background/50"
+              disabled={isLoading}
             />
             <Input
               placeholder="Year (e.g., 2018)"
               type="number"
+              min="1900"
+              max={new Date().getFullYear() + 1}
               value={year}
               onChange={(e) => setYear(e.target.value)}
               className="bg-background/50"
+              disabled={isLoading}
             />
             <div className="flex gap-2">
               <Button
@@ -177,7 +207,13 @@ const GarageSelector = ({
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setIsAdding(false)}
+                onClick={() => {
+                  setIsAdding(false);
+                  setManufacturer("");
+                  setModel("");
+                  setYear("");
+                }}
+                disabled={isLoading}
                 className="flex-1"
               >
                 Cancel
