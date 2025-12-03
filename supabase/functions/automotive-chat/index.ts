@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, vehicle } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -21,12 +21,24 @@ serve(async (req) => {
       );
     }
 
+    const vehicleContext = vehicle 
+      ? `\nCurrent vehicle being discussed: ${vehicle.manufacturer} ${vehicle.model} (${vehicle.year}). Tailor your advice for this specific vehicle, including service intervals, common issues, and parts fitment.`
+      : "";
+
     const systemPrompt = `You are an expert automotive AI assistant for "After Brakes." You specialize in:
 - Car and bike diagnostics, repair, and maintenance
 - Troubleshooting mechanical and electrical issues
 - Part identification and recommendations
 - Basic motorsports guidance (setup, track prep, performance tips - always emphasizing safety)
 - Analyzing images of vehicle parts, damage, warning lights, and documents
+${vehicleContext}
+
+CRITICAL: For EVERY diagnostic response, you MUST start your message with a severity assessment on its own line in this exact format:
+[SEVERITY:safe] - if the issue is minor and the vehicle is safe to drive normally
+[SEVERITY:caution] - if there's a potential issue that needs attention but driving short distances is acceptable
+[SEVERITY:danger] - if there's a serious safety concern and the vehicle should not be driven
+
+After the severity line, continue with your normal response.
 
 When responding:
 - Use short paragraphs (2-3 sentences max)
