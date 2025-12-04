@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, Plus, LogOut, Cpu } from "lucide-react";
+import { Car, Plus, LogOut } from "lucide-react";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import HistoryDrawer from "@/components/HistoryDrawer";
-import ThemeToggle from "@/components/ThemeToggle";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
 import MechanicSummary from "@/components/MechanicSummary";
-import OBDExplainer from "@/components/OBDExplainer";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +25,6 @@ const Index = () => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [showGarageSelector, setShowGarageSelector] = useState(false);
   const [showMechanicSummary, setShowMechanicSummary] = useState(false);
-  const [showOBDExplainer, setShowOBDExplainer] = useState(false);
   const [vehicleToast, setVehicleToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -206,18 +203,6 @@ const Index = () => {
     setVehicleToast(`Now diagnosing: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year}`);
   };
 
-  const handleOBDSubmit = (message: string) => {
-    handleSend(message, []);
-  };
-
-  const handleNoCode = () => {
-    // Pre-fill a symptom-based chat message
-    const vehicleInfo = activeVehicle 
-      ? `My ${activeVehicle.manufacturer} ${activeVehicle.model} (${activeVehicle.year})` 
-      : "My vehicle";
-    handleSend(`${vehicleInfo} is having an issue but I don't have the OBD code. Can you help me diagnose based on symptoms?`, []);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -250,7 +235,6 @@ const Index = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={signOut} className="btn-glow hover:bg-secondary/50 transition-smooth">
             <LogOut className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
@@ -275,27 +259,12 @@ const Index = () => {
               <h2 className="text-heading text-foreground mb-3 md:mb-4 font-serif">
                 Welcome to After Brakes
               </h2>
-              <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed mb-6">
-                Your AI pit crew for every drive.
+              <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">
+                Your AI pit crew for every drive. Speak or type your symptoms below.
               </p>
-              <button
-                onClick={() => setShowOBDExplainer(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 hover:border-primary/60 transition-all btn-glow btn-tap"
-              >
-                <Cpu className="w-4 h-4" />
-                OBD Code Explainer
-              </button>
             </div>
             <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
               <ChatInput onSend={handleSend} disabled={isLoading} />
-              <div className="mt-3 text-center">
-                <button
-                  onClick={() => setShowOBDExplainer(true)}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Got an OBD code?
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -337,14 +306,6 @@ const Index = () => {
           <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm">
             <div className="max-w-4xl mx-auto w-full px-4 py-4">
               <ChatInput onSend={handleSend} disabled={isLoading} />
-              <div className="mt-2 text-center">
-                <button
-                  onClick={() => setShowOBDExplainer(true)}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Got an OBD code?
-                </button>
-              </div>
             </div>
           </div>
         </>
@@ -368,19 +329,6 @@ const Index = () => {
           messages={messages}
           vehicle={activeVehicle}
           onClose={() => setShowMechanicSummary(false)}
-        />
-      )}
-
-      {showOBDExplainer && (
-        <OBDExplainer
-          vehicle={activeVehicle}
-          onSubmit={handleOBDSubmit}
-          onClose={() => setShowOBDExplainer(false)}
-          onChangeVehicle={() => {
-            setShowOBDExplainer(false);
-            setShowGarageSelector(true);
-          }}
-          onNoCode={handleNoCode}
         />
       )}
     </div>

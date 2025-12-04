@@ -343,4 +343,68 @@
     background: linear-gradient(90deg, transparent, hsl(262 44% 43% / 0.8), transparent);
     animation: scanLine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
+
+  /* Voice recording mic button */
+  .mic-recording {
+    box-shadow: 0 0 0 0 hsl(262 44% 43% / 0.7);
+    animation: micPulse 1.5s ease-out infinite;
+  }
+
+  @keyframes micPulse {
+    0% {
+      box-shadow: 0 0 0 0 hsl(262 44% 43% / 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 12px hsl(262 44% 43% / 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(262 44% 43% / 0);
+    }
+  }
+
+  /* Voice waveform animation */
+  .voice-waveform {
+    @apply flex items-center gap-1;
+  }
+
+  .voice-waveform span {
+    @apply w-1 bg-primary rounded-full;
+    animation: waveform 1s ease-in-out infinite;
+  }
+
+  .voice-waveform span:nth-child(1) {
+    height: 8px;
+    animation-delay: 0s;
+  }
+
+  .voice-waveform span:nth-child(2) {
+    height: 16px;
+    animation-delay: 0.1s;
+  }
+
+  .voice-waveform span:nth-child(3) {
+    height: 24px;
+    animation-delay: 0.2s;
+  }
+
+  .voice-waveform span:nth-child(4) {
+    height: 16px;
+    animation-delay: 0.3s;
+  }
+
+  .voice-waveform span:nth-child(5) {
+    height: 8px;
+    animation-delay: 0.4s;
+  }
+
+  @keyframes waveform {
+    0%, 100% {
+      transform: scaleY(0.5);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
 }
