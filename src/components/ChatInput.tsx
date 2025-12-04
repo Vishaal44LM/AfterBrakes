@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ImagePlus, Send, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ImagePlus, Send, X, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
@@ -12,7 +12,77 @@ interface ChatInputProps {
 const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check for browser support
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      recognitionRef.current = new SpeechRecognitionAPI();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setMessage(prev => prev + finalTranscript);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        toast({
+          title: "Voice input error",
+          description: "Could not process voice input. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [toast]);
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Not supported",
+        description: "Voice input is not supported in this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else {
+      recognitionRef.current.start();
+      setIsRecording(true);
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -47,6 +117,10 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   const handleSend = () => {
     if (!message.trim() && images.length === 0) return;
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    }
     onSend(message, images);
     setMessage("");
     setImages([]);
@@ -61,6 +135,20 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   return (
     <div className="w-full space-y-3">
+      {/* Voice recording indicator */}
+      {isRecording && (
+        <div className="flex items-center justify-center gap-3 py-2 animate-fade-slide-up">
+          <div className="voice-waveform">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span className="text-sm text-primary font-medium">Listening...</span>
+        </div>
+      )}
+
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 px-2">
           {images.map((img, idx) => (
@@ -101,6 +189,21 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
             <ImagePlus className="w-5 h-5 text-muted-foreground" />
           </Button>
         </label>
+
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          disabled={disabled}
+          onClick={toggleRecording}
+          className={`h-10 w-10 md:h-11 md:w-11 rounded-full transition-all ${
+            isRecording 
+              ? "bg-primary/20 text-primary mic-recording" 
+              : "hover:bg-secondary/50 text-muted-foreground"
+          }`}
+        >
+          <Mic className="w-5 h-5" />
+        </Button>
 
         <Textarea
           value={message}
