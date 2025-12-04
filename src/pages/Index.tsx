@@ -249,7 +249,7 @@ const Index = () => {
       </header>
 
       <div className="px-4 mb-2">
-        <GaragePill vehicle={activeVehicle} onClick={() => setShowGarageSelector(true)} />
+        <GaragePill vehicle={activeVehicle} onClick={() => setShowGarageSelector(true)} className="text-center" />
       </div>
 
       {vehicleToast && <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
