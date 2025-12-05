@@ -2,6 +2,3 @@ project_id = "zqontzqfjrggbddxgyxb"
 
 [functions.automotive-chat]
 verify_jwt = false
-
-[functions.generate-diagnosis]
-verify_jwt = false

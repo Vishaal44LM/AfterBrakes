@@ -3,7 +3,7 @@ import { History, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -103,9 +103,6 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
             <div className="flex items-center justify-between">
               <SheetTitle className="text-heading">Chat History</SheetTitle>
             </div>
-            <SheetDescription className="sr-only">
-              Browse and search your previous conversations
-            </SheetDescription>
             <div className="mt-4 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
