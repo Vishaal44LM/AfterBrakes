@@ -263,7 +263,7 @@ const Index = () => {
               <h2 className="text-heading text-foreground mb-3 md:mb-4 font-serif">
                 Welcome to After Brakes
               </h2>
-              <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">Your pit crew for every drive. </p>
+              <p className="text-body text-muted-foreground max-w-md mx-auto leading-relaxed">Pit crew for every drive. </p>
             </div>
             <div className="animate-fade-slide-up" style={{
           animationDelay: '100ms'
