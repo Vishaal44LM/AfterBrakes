@@ -50,6 +50,11 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        diagnosis: {
+          success: "hsl(var(--diagnosis-success))",
+          warning: "hsl(var(--diagnosis-warning))",
+          danger: "hsl(var(--diagnosis-danger))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
