@@ -15,13 +15,22 @@ interface Message {
   images?: string[];
 }
 
+interface DiagnosisStep {
+  title: string;
+  content: string;
+}
+
+type StepStatus = "pending" | "done" | "skipped" | "cantdo";
+
 interface MechanicSummaryProps {
   messages: Message[];
   vehicle: Vehicle | null;
   onClose: () => void;
+  stepStatuses?: StepStatus[];
+  steps?: DiagnosisStep[];
 }
 
-const MechanicSummary = ({ messages, vehicle, onClose }: MechanicSummaryProps) => {
+const MechanicSummary = ({ messages, vehicle, onClose, stepStatuses, steps }: MechanicSummaryProps) => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
