@@ -10,9 +10,10 @@ interface Vehicle {
 interface GaragePillProps {
   vehicle: Vehicle | null;
   onClick: () => void;
+  className?: string;
 }
 
-const GaragePill = ({ vehicle, onClick }: GaragePillProps) => {
+const GaragePill = ({ vehicle, onClick, className }: GaragePillProps) => {
   return (
     <button
       onClick={onClick}
