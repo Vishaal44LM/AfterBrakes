@@ -85,6 +85,7 @@ export type Database = {
       vehicles: {
         Row: {
           created_at: string
+          fuel: string | null
           id: string
           is_active: boolean | null
           manufacturer: string
@@ -95,6 +96,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fuel?: string | null
           id?: string
           is_active?: boolean | null
           manufacturer: string
@@ -105,6 +107,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fuel?: string | null
           id?: string
           is_active?: boolean | null
           manufacturer?: string

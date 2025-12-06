@@ -5,6 +5,7 @@ interface Vehicle {
   manufacturer: string;
   model: string;
   year: number;
+  fuel?: "petrol" | "diesel" | "cng" | "ev";
 }
 
 interface GaragePillProps {
@@ -22,7 +23,7 @@ const GaragePill = ({ vehicle, onClick, className }: GaragePillProps) => {
       <Car className="w-4 h-4 text-primary" />
       {vehicle ? (
         <span className="text-sm text-foreground">
-          {vehicle.manufacturer} {vehicle.model} · {vehicle.year}
+          {vehicle.manufacturer} {vehicle.model} · {vehicle.year} · {vehicle.fuel?.toUpperCase() || "Petrol"}
         </span>
       ) : (
         <span className="text-sm text-muted-foreground">Select vehicle</span>
