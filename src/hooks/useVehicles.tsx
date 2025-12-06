@@ -6,6 +6,7 @@ export interface Vehicle {
   manufacturer: string;
   model: string;
   year: number;
+  fuel: "petrol" | "diesel" | "cng" | "ev";
   is_active: boolean;
 }
 

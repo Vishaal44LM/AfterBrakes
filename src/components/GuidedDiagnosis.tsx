@@ -52,15 +52,26 @@ const GuidedDiagnosis = ({
     fetchDiagnosis();
   }, []);
 
+  // Clean text by removing asterisks and normalizing formatting
+  const cleanText = (text: string): string => {
+    return text
+      .replace(/\*\*/g, "") // Remove bold markers
+      .replace(/\*/g, "") // Remove any remaining asterisks
+      .replace(/^\s*[-]\s*/gm, "• ") // Normalize dashes to bullets
+      .trim();
+  };
+
   const parseResponse = (text: string) => {
+    const cleanedText = cleanText(text);
+    
     // Extract title (first line)
-    const lines = text.split("\n").filter((l) => l.trim());
+    const lines = cleanedText.split("\n").filter((l) => l.trim());
     if (lines.length > 0) {
-      setTitle(lines[0].replace(/^#+\s*/, "").replace(/^\*\*|\*\*$/g, ""));
+      setTitle(lines[0].replace(/^#+\s*/, "").trim());
     }
 
     // Extract safety level
-    const safetyMatch = text.match(/Safety level:\s*(Safe to drive|Drive with caution|Do not drive)[.!]?/i);
+    const safetyMatch = cleanedText.match(/Safety level:\s*(Safe to drive|Drive with caution|Do not drive)[.!]?/i);
     if (safetyMatch) {
       const level = safetyMatch[1].toLowerCase();
       if (level.includes("do not")) setSafetyLevel("danger");
@@ -68,7 +79,7 @@ const GuidedDiagnosis = ({
       else setSafetyLevel("safe");
 
       // Get safety reason (text after the safety level on same line or next sentence)
-      const afterSafety = text.slice(text.indexOf(safetyMatch[0]) + safetyMatch[0].length);
+      const afterSafety = cleanedText.slice(cleanedText.indexOf(safetyMatch[0]) + safetyMatch[0].length);
       const reasonMatch = afterSafety.match(/^[^.]*\./);
       if (reasonMatch) {
         setSafetyReason(reasonMatch[0].trim());
@@ -76,19 +87,19 @@ const GuidedDiagnosis = ({
     }
 
     // Extract intro (text between safety and first step)
-    const introMatch = text.match(/Safety level:[^\n]*\n+([\s\S]*?)(?=\n\s*(?:\d+\.|Step \d|##))/i);
+    const introMatch = cleanedText.match(/Safety level:[^\n]*\n+([\s\S]*?)(?=\n\s*(?:\d+\.|Step \d|##))/i);
     if (introMatch) {
       setIntro(introMatch[1].trim());
     }
 
-    // Extract steps
-    const stepPattern = /(?:^|\n)\s*(?:\*\*)?(\d+)\.\s*(?:\*\*)?([^*\n]+?)(?:\*\*)?[\n:]\s*([\s\S]*?)(?=(?:\n\s*(?:\*\*)?\d+\.)|(?:\n\s*(?:Likely|Summary|##))|\n\n\n|$)/gi;
+    // Extract steps - updated pattern without asterisks
+    const stepPattern = /(?:^|\n)\s*(\d+)\.\s*([^\n•]+?)[\n:]\s*([\s\S]*?)(?=(?:\n\s*\d+\.)|(?:\n\s*(?:Likely|Summary|##))|\n\n\n|$)/gi;
     const extractedSteps: DiagnosisStep[] = [];
     let match;
-    while ((match = stepPattern.exec(text)) !== null) {
+    while ((match = stepPattern.exec(cleanedText)) !== null) {
       extractedSteps.push({
         title: match[2].trim(),
-        content: match[3].trim().replace(/^\s*[-•]\s*/gm, "• "),
+        content: match[3].trim(),
       });
     }
     if (extractedSteps.length > 0) {
@@ -97,13 +108,13 @@ const GuidedDiagnosis = ({
     }
 
     // Extract likely areas
-    const likelyMatch = text.match(/(?:Likely areas?|Likely cause|Also possible)[\s\S]*?(?=Summary for|$)/i);
+    const likelyMatch = cleanedText.match(/(?:Likely areas?|Likely cause|Also possible)[\s\S]*?(?=Summary for|$)/i);
     if (likelyMatch) {
       setLikelyAreas(likelyMatch[0].trim());
     }
 
     // Extract mechanic summary
-    const summaryMatch = text.match(/Summary for (?:your )?mechanic:?([\s\S]*?)$/i);
+    const summaryMatch = cleanedText.match(/Summary for (?:your )?mechanic:?([\s\S]*?)$/i);
     if (summaryMatch) {
       setMechanicSummary(summaryMatch[1].trim());
     }
@@ -127,6 +138,7 @@ const GuidedDiagnosis = ({
                 manufacturer: vehicle.manufacturer,
                 model: vehicle.model,
                 year: vehicle.year,
+                fuel: vehicle.fuel,
               }
             : null,
         }),

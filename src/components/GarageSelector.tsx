@@ -10,6 +10,7 @@ interface Vehicle {
   manufacturer: string;
   model: string;
   year: number;
+  fuel: "petrol" | "diesel" | "cng" | "ev";
   is_active: boolean;
 }
 
@@ -34,8 +35,16 @@ const GarageSelector = ({
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
+  const [fuel, setFuel] = useState<"petrol" | "diesel" | "cng" | "ev">("petrol");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const fuelOptions = [
+    { value: "petrol", label: "Petrol" },
+    { value: "diesel", label: "Diesel" },
+    { value: "cng", label: "CNG" },
+    { value: "ev", label: "EV" },
+  ] as const;
 
   const handleAdd = async () => {
     const trimmedManufacturer = manufacturer.trim();
@@ -60,6 +69,7 @@ const GarageSelector = ({
         manufacturer: trimmedManufacturer,
         model: trimmedModel,
         year: yearNum,
+        fuel,
         is_active: vehicles.length === 0,
       }).select().single();
 
@@ -71,6 +81,7 @@ const GarageSelector = ({
       setManufacturer("");
       setModel("");
       setYear("");
+      setFuel("petrol");
       setIsAdding(false);
       onRefresh();
       toast({ title: "Vehicle added successfully" });
@@ -146,7 +157,9 @@ const GarageSelector = ({
                 <p className="font-medium text-foreground">
                   {vehicle.manufacturer} {vehicle.model}
                 </p>
-                <p className="text-sm text-muted-foreground">{vehicle.year}</p>
+                <p className="text-sm text-muted-foreground">
+                  {vehicle.year} · {vehicle.fuel?.toUpperCase() || "Petrol"}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 {activeVehicle?.id === vehicle.id && (
@@ -197,6 +210,23 @@ const GarageSelector = ({
               className="bg-background/50"
               disabled={isLoading}
             />
+            <div className="grid grid-cols-4 gap-2">
+              {fuelOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setFuel(option.value)}
+                  disabled={isLoading}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    fuel === option.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background/50 text-muted-foreground hover:bg-secondary/50"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-2">
               <Button
                 onClick={handleAdd}
@@ -212,6 +242,7 @@ const GarageSelector = ({
                   setManufacturer("");
                   setModel("");
                   setYear("");
+                  setFuel("petrol");
                 }}
                 disabled={isLoading}
                 className="flex-1"
