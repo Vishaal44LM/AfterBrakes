@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Wrench, ArrowLeft, MessageCircle, FileText, Check, AlertTriangle, XCircle } from "lucide-react";
+import { Wrench, ArrowLeft, MessageCircle, ChevronUp, ChevronDown, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GuidedCheckStep, { StepStatus } from "./GuidedCheckStep";
 import MechanicSummary from "./MechanicSummary";
+import SeverityIndicator from "./SeverityIndicator";
 import { Vehicle } from "@/hooks/useVehicles";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "./ui/use-toast";
 
 interface DiagnosisStep {
   title: string;
@@ -14,8 +17,10 @@ interface GuidedDiagnosisProps {
   symptom: string;
   images?: string[];
   vehicle: Vehicle | null;
+  userId: string;
   onBack: () => void;
   onOpenChat: () => void;
+  onStartNewCheck: () => void;
 }
 
 type SafetyLevel = "safe" | "caution" | "danger";
@@ -24,8 +29,10 @@ const GuidedDiagnosis = ({
   symptom,
   images,
   vehicle,
+  userId,
   onBack,
   onOpenChat,
+  onStartNewCheck,
 }: GuidedDiagnosisProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -38,7 +45,10 @@ const GuidedDiagnosis = ({
   const [stepStatuses, setStepStatuses] = useState<StepStatus[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const [rawResponse, setRawResponse] = useState("");
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,25 +62,22 @@ const GuidedDiagnosis = ({
     fetchDiagnosis();
   }, []);
 
-  // Clean text by removing asterisks and normalizing formatting
   const cleanText = (text: string): string => {
     return text
-      .replace(/\*\*/g, "") // Remove bold markers
-      .replace(/\*/g, "") // Remove any remaining asterisks
-      .replace(/^\s*[-]\s*/gm, "• ") // Normalize dashes to bullets
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/^\s*[-]\s*/gm, "• ")
       .trim();
   };
 
   const parseResponse = (text: string) => {
     const cleanedText = cleanText(text);
     
-    // Extract title (first line)
     const lines = cleanedText.split("\n").filter((l) => l.trim());
     if (lines.length > 0) {
       setTitle(lines[0].replace(/^#+\s*/, "").trim());
     }
 
-    // Extract safety level
     const safetyMatch = cleanedText.match(/Safety level:\s*(Safe to drive|Drive with caution|Do not drive)[.!]?/i);
     if (safetyMatch) {
       const level = safetyMatch[1].toLowerCase();
@@ -78,7 +85,6 @@ const GuidedDiagnosis = ({
       else if (level.includes("caution")) setSafetyLevel("caution");
       else setSafetyLevel("safe");
 
-      // Get safety reason (text after the safety level on same line or next sentence)
       const afterSafety = cleanedText.slice(cleanedText.indexOf(safetyMatch[0]) + safetyMatch[0].length);
       const reasonMatch = afterSafety.match(/^[^.]*\./);
       if (reasonMatch) {
@@ -86,13 +92,11 @@ const GuidedDiagnosis = ({
       }
     }
 
-    // Extract intro (text between safety and first step)
     const introMatch = cleanedText.match(/Safety level:[^\n]*\n+([\s\S]*?)(?=\n\s*(?:\d+\.|Step \d|##))/i);
     if (introMatch) {
       setIntro(introMatch[1].trim());
     }
 
-    // Extract steps - updated pattern without asterisks
     const stepPattern = /(?:^|\n)\s*(\d+)\.\s*([^\n•]+?)[\n:]\s*([\s\S]*?)(?=(?:\n\s*\d+\.)|(?:\n\s*(?:Likely|Summary|##))|\n\n\n|$)/gi;
     const extractedSteps: DiagnosisStep[] = [];
     let match;
@@ -107,13 +111,11 @@ const GuidedDiagnosis = ({
       setStepStatuses(extractedSteps.map(() => "pending"));
     }
 
-    // Extract likely areas
     const likelyMatch = cleanedText.match(/(?:Likely areas?|Likely cause|Also possible)[\s\S]*?(?=Summary for|$)/i);
     if (likelyMatch) {
       setLikelyAreas(likelyMatch[0].trim());
     }
 
-    // Extract mechanic summary
     const summaryMatch = cleanedText.match(/Summary for (?:your )?mechanic:?([\s\S]*?)$/i);
     if (summaryMatch) {
       setMechanicSummary(summaryMatch[1].trim());
@@ -200,40 +202,112 @@ const GuidedDiagnosis = ({
     });
   };
 
+  const handleSaveCheck = async () => {
+    if (!userId) return;
+    
+    try {
+      const checkTitle = title || `Check: ${symptom.substring(0, 50)}`;
+      const vehicleTag = vehicle ? `${vehicle.manufacturer} ${vehicle.model}` : null;
+      
+      await supabase.from("chat_history").insert({
+        user_id: userId,
+        title: checkTitle,
+        messages: [
+          { role: "user", content: symptom },
+          { role: "assistant", content: rawResponse },
+        ] as any,
+        vehicle_id: vehicle?.id || null,
+        vehicle_tag: vehicleTag,
+      });
+      
+      setIsSaved(true);
+      toast({
+        title: "Check saved",
+        description: "You can find this in your history.",
+      });
+    } catch (error) {
+      console.error("Error saving check:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save check",
+        variant: "destructive",
+      });
+    }
+  };
+
   const completedSteps = stepStatuses.filter((s) => s === "done").length;
   const totalSteps = steps.length;
   const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-  const getSafetyBadge = () => {
-    if (!safetyLevel) return null;
-
-    const config = {
-      safe: {
-        icon: Check,
-        text: "Safe to drive",
-        className: "text-muted-foreground",
-      },
-      caution: {
-        icon: AlertTriangle,
-        text: "Drive with caution",
-        className: "text-primary",
-      },
-      danger: {
-        icon: XCircle,
-        text: "Do not drive",
-        className: "text-foreground font-semibold",
-      },
-    };
-
-    const { icon: Icon, text, className } = config[safetyLevel];
-
+  // Skeleton loading state
+  if (isLoading && steps.length === 0) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <Icon className="w-4 h-4" />
-        <span className="text-sm">{text}</span>
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="btn-glow hover:bg-secondary/50"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-primary" />
+            <span className="text-sm font-medium text-foreground">Pit Crew Check</span>
+          </div>
+
+          <div className="w-20" />
+        </div>
+
+        {/* Skeleton content */}
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-2xl mx-auto space-y-6 animate-pulse">
+            {/* Safety badge skeleton */}
+            <div className="h-8 w-40 bg-secondary/50 rounded-full" />
+            
+            {/* Title skeleton */}
+            <div className="h-6 w-3/4 bg-secondary/50 rounded-lg" />
+            
+            {/* Intro skeleton */}
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-secondary/30 rounded" />
+              <div className="h-4 w-2/3 bg-secondary/30 rounded" />
+            </div>
+            
+            {/* Steps skeleton */}
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="bg-card/50 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-secondary/50 rounded-full" />
+                    <div className="h-5 w-1/2 bg-secondary/50 rounded" />
+                  </div>
+                  <div className="space-y-2 pl-11">
+                    <div className="h-3 w-full bg-secondary/30 rounded" />
+                    <div className="h-3 w-3/4 bg-secondary/30 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Summary skeleton */}
+            <div className="bg-card/50 rounded-2xl p-4 space-y-3">
+              <div className="h-5 w-40 bg-secondary/50 rounded" />
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-secondary/30 rounded" />
+                <div className="h-3 w-full bg-secondary/30 rounded" />
+                <div className="h-3 w-2/3 bg-secondary/30 rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
-  };
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -265,117 +339,125 @@ const GuidedDiagnosis = ({
         </Button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Title and safety badge */}
-          {title && (
-            <div className="animate-fade-slide-up">
-              <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-3">
-                {title}
-              </h2>
-              {getSafetyBadge()}
-              {safetyReason && (
-                <p className="text-sm text-muted-foreground mt-1">{safetyReason}</p>
-              )}
-            </div>
-          )}
-
-          {/* Intro */}
-          {intro && (
-            <p className="text-body text-muted-foreground animate-fade-slide-up">
-              {intro}
-            </p>
-          )}
-
-          {/* Progress indicator */}
-          {steps.length > 0 && (
-            <div className="flex items-center gap-3 py-2 animate-fade-slide-up">
-              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {completedSteps}/{totalSteps} · {progress}%
+      {/* Bottom sheet style content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="min-h-full flex flex-col">
+          {/* Collapsible header bar */}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-card/95 backdrop-blur-sm border-b border-border/20"
+          >
+            <div className="flex items-center gap-3">
+              {safetyLevel && <SeverityIndicator severity={safetyLevel} />}
+              <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
+                {title || "Checking..."}
               </span>
             </div>
-          )}
+            {isExpanded ? (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            )}
+          </button>
 
-          {/* Steps */}
-          <div className="space-y-4">
-            {steps.map((step, idx) => (
-              <div
-                key={idx}
-                className="animate-fade-slide-up"
-                style={{ animationDelay: `${idx * 50}ms` }}
-              >
-                <GuidedCheckStep
-                  stepNumber={idx + 1}
-                  title={step.title}
-                  content={step.content}
-                  status={stepStatuses[idx]}
-                  onStatusChange={(status) => handleStepStatusChange(idx, status)}
-                  disabled={isLoading}
-                />
-              </div>
-            ))}
-          </div>
+          {isExpanded && (
+            <div className="flex-1 px-4 py-6">
+              <div className="max-w-2xl mx-auto space-y-6">
+                {/* Safety reason */}
+                {safetyReason && (
+                  <p className="text-sm text-muted-foreground animate-fade-slide-up">
+                    {safetyReason}
+                  </p>
+                )}
 
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex items-center gap-3 py-4">
-              <div className="flex gap-1.5">
-                <div
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "0ms" }}
-                />
-                <div
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <div
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                />
+                {/* Intro */}
+                {intro && (
+                  <p className="text-body text-muted-foreground animate-fade-slide-up">
+                    {intro}
+                  </p>
+                )}
+
+                {/* Progress indicator */}
+                {steps.length > 0 && (
+                  <div className="flex items-center gap-3 py-2 animate-fade-slide-up">
+                    <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {completedSteps}/{totalSteps}
+                    </span>
+                  </div>
+                )}
+
+                {/* Steps */}
+                <div className="space-y-3">
+                  {steps.map((step, idx) => (
+                    <div
+                      key={idx}
+                      className="animate-fade-slide-up"
+                      style={{ animationDelay: `${idx * 50}ms` }}
+                    >
+                      <GuidedCheckStep
+                        stepNumber={idx + 1}
+                        title={step.title}
+                        content={step.content}
+                        status={stepStatuses[idx]}
+                        onStatusChange={(status) => handleStepStatusChange(idx, status)}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Likely areas */}
+                {!isLoading && likelyAreas && (
+                  <div className="card-vignette p-4 animate-fade-slide-up">
+                    <h3 className="font-semibold text-foreground mb-2 text-sm">Likely Areas</h3>
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {likelyAreas}
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
               </div>
-              <span className="text-sm text-muted-foreground">Preparing your checklist...</span>
             </div>
           )}
 
-          {/* Likely areas */}
-          {!isLoading && likelyAreas && (
-            <div className="card-vignette p-5 animate-fade-slide-up">
-              <h3 className="font-semibold text-foreground mb-3">Likely Areas</h3>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {likelyAreas}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
+          {/* Footer actions - always visible */}
           {!isLoading && steps.length > 0 && (
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 animate-fade-slide-up">
-              <Button
+            <div className="sticky bottom-0 border-t border-border/20 bg-background/95 backdrop-blur-sm p-4">
+              <div className="max-w-2xl mx-auto flex gap-3">
+                <Button
+                  onClick={handleSaveCheck}
+                  disabled={isSaved}
+                  className="flex-1 btn-glow bg-primary hover:bg-primary/90"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaved ? "Saved" : "Save check"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={onStartNewCheck}
+                  className="flex-1 border-border/40 hover:bg-secondary/50"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Start new check
+                </Button>
+              </div>
+              
+              {/* View mechanic summary */}
+              <button
                 onClick={() => setShowSummary(true)}
-                className="flex-1 btn-glow bg-primary hover:bg-primary/90"
+                className="w-full mt-3 text-sm text-primary hover:text-primary/80 transition-colors"
               >
-                <FileText className="w-4 h-4 mr-2" />
-                Summary for Mechanic
-              </Button>
-              <Button
-                variant="outline"
-                onClick={onOpenChat}
-                className="flex-1 border-primary/30 text-primary hover:bg-primary/10"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Continue in Chat
-              </Button>
+                View summary for mechanic →
+              </button>
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
       </div>
 

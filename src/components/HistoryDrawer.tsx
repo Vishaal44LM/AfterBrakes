@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, X, Search } from "lucide-react";
+import { History, X, Search, Wrench, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,10 +17,11 @@ interface ChatHistory {
 }
 
 interface HistoryDrawerProps {
-  onLoadChat: (messages: any[]) => void;
+  onLoadChat: (messages: any[], chatId: string) => void;
+  onLoadCheck?: (messages: any[], chatId: string) => void;
 }
 
-const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
+const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
   const [open, setOpen] = useState(false);
   const [chats, setChats] = useState<ChatHistory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,8 +68,27 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
     chat.vehicle_tag?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Determine if a chat is a Pit Crew Check or Pit Lane Talk
+  const isPitCrewCheck = (chat: ChatHistory): boolean => {
+    // Check if the assistant response contains structured checklist indicators
+    const assistantMsg = chat.messages.find(m => m.role === "assistant");
+    if (!assistantMsg) return false;
+    
+    const content = assistantMsg.content?.toLowerCase() || "";
+    return content.includes("safety level:") && 
+           (content.includes("step") || content.includes("1.") || content.includes("checklist"));
+  };
+
   const handleLoadChat = (chat: ChatHistory) => {
-    onLoadChat(chat.messages);
+    const isCheck = isPitCrewCheck(chat);
+    
+    if (isCheck && onLoadCheck) {
+      // Load as Pit Crew Check - pass the chat ID to maintain session
+      onLoadCheck(chat.messages, chat.id);
+    } else {
+      // Load as Pit Lane Talk
+      onLoadChat(chat.messages, chat.id);
+    }
     setOpen(false);
   };
 
@@ -101,12 +121,12 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
         <div className="flex flex-col h-full">
           <SheetHeader className="p-4 md:p-6 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-heading">Chat History</SheetTitle>
+              <SheetTitle className="text-lg font-semibold">History</SheetTitle>
             </div>
             <div className="mt-4 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search chats..."
+                placeholder="Search history..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-card border-border/40 rounded-full"
@@ -116,34 +136,60 @@ const HistoryDrawer = ({ onLoadChat }: HistoryDrawerProps) => {
 
           <ScrollArea className="flex-1 px-4 md:px-6">
             {loading ? (
-              <div className="py-8 text-center text-muted-foreground text-small">
+              <div className="py-8 text-center text-muted-foreground text-sm">
                 Loading...
               </div>
             ) : filteredChats.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-small">
-                {searchQuery ? "No chats found" : "No chat history yet"}
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                {searchQuery ? "No results found" : "No history yet"}
               </div>
             ) : (
               <div className="space-y-3 py-4">
-                {filteredChats.map((chat) => (
-                  <button
-                    key={chat.id}
-                    onClick={() => handleLoadChat(chat)}
-                    className="w-full text-left p-4 rounded-2xl bg-card border border-border/40 hover:border-primary/40 transition-smooth btn-glow group"
-                  >
-                    <h3 className="text-body font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                      {chat.title}
-                    </h3>
-                    <div className="flex items-center justify-between text-small text-muted-foreground">
-                      <span>{formatDate(chat.created_at)}</span>
-                      {chat.vehicle_tag && (
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                          {chat.vehicle_tag}
+                {filteredChats.map((chat) => {
+                  const isCheck = isPitCrewCheck(chat);
+                  return (
+                    <button
+                      key={chat.id}
+                      onClick={() => handleLoadChat(chat)}
+                      className="w-full text-left p-4 rounded-2xl bg-card border border-border/40 hover:border-primary/40 transition-smooth btn-glow group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          isCheck ? "bg-primary/10" : "bg-secondary/50"
+                        }`}>
+                          {isCheck ? (
+                            <Wrench className="w-4 h-4 text-primary" />
+                          ) : (
+                            <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                            {chat.title}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatDate(chat.created_at)}</span>
+                            {chat.vehicle_tag && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">{chat.vehicle_tag}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 pl-11">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          isCheck 
+                            ? "bg-primary/10 text-primary" 
+                            : "bg-secondary/50 text-muted-foreground"
+                        }`}>
+                          {isCheck ? "Pit Crew Check" : "Pit Lane Talk"}
                         </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
