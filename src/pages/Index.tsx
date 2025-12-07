@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, LogOut } from "lucide-react";
+import { Car, LogOut, Plus } from "lucide-react";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
@@ -18,11 +18,17 @@ interface GuidedSession {
   images: string[];
 }
 
+interface ChatSession {
+  messages: any[];
+  chatId: string | null;
+}
+
 const Index = () => {
   const [mode, setMode] = useState<AppMode>("home");
   const [showGarageSelector, setShowGarageSelector] = useState(false);
   const [vehicleToast, setVehicleToast] = useState<string | null>(null);
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
+  const [chatSession, setChatSession] = useState<ChatSession>({ messages: [], chatId: null });
 
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -54,17 +60,38 @@ const Index = () => {
   };
 
   const handleOpenChat = () => {
+    setChatSession({ messages: [], chatId: null });
     setMode("chat");
   };
 
   const handleBack = () => {
     setMode("home");
     setGuidedSession(null);
+    setChatSession({ messages: [], chatId: null });
   };
 
-  const handleLoadChat = (loadedMessages: any[]) => {
-    // When loading from history, go to chat mode
+  const handleStartNewCheck = () => {
+    setGuidedSession(null);
+    setMode("home");
+  };
+
+  // Load chat from history - opens Pit Lane Talk with existing messages
+  const handleLoadChat = (loadedMessages: any[], chatId: string) => {
+    setChatSession({ messages: loadedMessages, chatId });
     setMode("chat");
+  };
+
+  // Load check from history - for now, just show the messages in chat mode
+  // In the future, this could reopen the exact checklist state
+  const handleLoadCheck = (loadedMessages: any[], chatId: string) => {
+    // For Pit Crew Checks, we show them in chat mode with the ability to resume
+    setChatSession({ messages: loadedMessages, chatId });
+    setMode("chat");
+  };
+
+  const handleViewPastChecks = () => {
+    // This triggers the history drawer to open - we'll use a ref or state
+    // For now, the history button in the header serves this purpose
   };
 
   if (loading) {
@@ -85,31 +112,32 @@ const Index = () => {
       {/* Header - only show on home */}
       {mode === "home" && (
         <>
-          <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 mx-4 md:mx-6 mt-4 mb-2 panel-floating">
-            <div className="flex items-center gap-2 md:gap-3">
-              <HistoryDrawer onLoadChat={handleLoadChat} />
+          <header className="flex items-center justify-between px-4 py-3 mx-4 mt-4 mb-2 panel-floating">
+            <div className="flex items-center gap-2">
+              <HistoryDrawer onLoadChat={handleLoadChat} onLoadCheck={handleLoadCheck} />
             </div>
 
-            <div className="flex items-center gap-2 md:gap-3">
-              <Car className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-              <h1 className="text-base font-semibold text-foreground font-serif md:text-xl">
+            <div className="flex items-center gap-2">
+              <Car className="w-5 h-5 text-primary" />
+              <h1 className="text-base font-semibold text-foreground">
                 After Brakes
               </h1>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={signOut}
                 className="btn-glow hover:bg-secondary/50 transition-smooth"
               >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+                <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </header>
 
-          <div className="px-4 mb-2">
+          {/* Vehicle pill */}
+          <div className="px-4 mb-4">
             <GaragePill
               vehicle={activeVehicle}
               onClick={() => setShowGarageSelector(true)}
@@ -121,14 +149,14 @@ const Index = () => {
 
       {/* Vehicle toast notification */}
       {vehicleToast && (
-        <div className="absolute top-32 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
           <span className="text-sm text-foreground">{vehicleToast}</span>
         </div>
       )}
 
       {/* Main content based on mode */}
       {mode === "home" && (
-        <div className="flex-1 flex items-center justify-center px-4">
+        <div className="flex-1 flex items-start justify-center pt-4 md:pt-8 overflow-y-auto">
           <PitCrewCheck
             onSubmit={handleStartGuidedCheck}
             disabled={false}
@@ -137,13 +165,15 @@ const Index = () => {
         </div>
       )}
 
-      {mode === "guided" && guidedSession && (
+      {mode === "guided" && guidedSession && user && (
         <GuidedDiagnosis
           symptom={guidedSession.symptom}
           images={guidedSession.images}
           vehicle={activeVehicle}
+          userId={user.id}
           onBack={handleBack}
           onOpenChat={handleOpenChat}
+          onStartNewCheck={handleStartNewCheck}
         />
       )}
 
@@ -151,6 +181,8 @@ const Index = () => {
         <PitLaneTalk
           vehicle={activeVehicle}
           userId={user.id}
+          initialMessages={chatSession.messages}
+          chatId={chatSession.chatId}
           onBack={handleBack}
           onStartGuidedCheck={(symptom) => handleStartGuidedCheck(symptom)}
         />

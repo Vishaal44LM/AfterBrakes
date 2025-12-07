@@ -290,8 +290,29 @@
     }
   }
 
-  .animate-fade-slide-up {
+.animate-fade-slide-up {
     animation: fadeSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Skeleton shimmer animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--secondary) / 0.3) 25%,
+      hsl(var(--secondary) / 0.5) 50%,
+      hsl(var(--secondary) / 0.3) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
   }
 
   .animate-fade-slide-left {
