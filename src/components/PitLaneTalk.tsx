@@ -273,16 +273,16 @@ const PitLaneTalk = ({
 
       {/* Content */}
       {isEmpty ? (
-        <div className="flex-1 flex flex-col px-4 pt-6 overflow-y-auto">
-          <div className="w-full max-w-xl mx-auto space-y-6">
+        <div className="flex-1 flex flex-col px-4 pt-4 overflow-y-auto">
+          <div className="w-full max-w-xl mx-auto space-y-3">
             {/* Subtitle */}
             <p className="text-sm text-muted-foreground">
               Quick questions, maintenance tips, or general advice.
             </p>
 
             {/* Suggestion chips */}
-            <div className="space-y-3">
-              <span className="text-xs text-muted-foreground/70">Try asking about</span>
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground/60">Try asking about</span>
               <div className="flex flex-wrap gap-2">
                 {suggestionChips.map((chip) => (
                   <button
@@ -297,8 +297,8 @@ const PitLaneTalk = ({
             </div>
 
             {/* Empty state hint */}
-            <div className="flex-1 flex items-center justify-center min-h-[200px]">
-              <p className="text-sm text-muted-foreground/50">
+            <div className="flex-1 flex items-center justify-center min-h-[160px]">
+              <p className="text-xs text-muted-foreground/40">
                 Your questions will appear here.
               </p>
             </div>

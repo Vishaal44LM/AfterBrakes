@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, X, Mic, Plus } from "lucide-react";
+import { Send, X, Mic, Plus, Camera, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import ActionSheet from "./ActionSheet";
 
 interface ChatInputProps {
   onSend: (message: string, images: string[]) => void;
@@ -22,7 +23,11 @@ const ChatInput = ({
   const [message, setMessage] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [showVoiceSheet, setShowVoiceSheet] = useState(false);
+  const [showImageSheet, setShowImageSheet] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -91,10 +96,27 @@ const ChatInput = ({
     }
   };
 
+  const handleMicClick = () => {
+    setShowVoiceSheet(true);
+    if (!isRecording) {
+      toggleRecording();
+    }
+  };
+
+  const handleCloseVoiceSheet = () => {
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    }
+    setShowVoiceSheet(false);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     const newImages: string[] = [];
+    let processedCount = 0;
+    
     for (const file of Array.from(files)) {
       if (file.size > 20 * 1024 * 1024) {
         toast({
@@ -102,17 +124,23 @@ const ChatInput = ({
           description: `${file.name} exceeds 20MB limit`,
           variant: "destructive"
         });
+        processedCount++;
         continue;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
         newImages.push(reader.result as string);
-        if (newImages.length === files.length) {
+        processedCount++;
+        if (processedCount === files.length) {
           setImages(prev => [...prev, ...newImages]);
+          setShowImageSheet(false);
         }
       };
       reader.readAsDataURL(file);
     }
+    
+    // Reset input value to allow selecting same file again
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -141,20 +169,6 @@ const ChatInput = ({
 
   return (
     <div className="w-full space-y-3">
-      {/* Voice recording indicator */}
-      {isRecording && (
-        <div className="flex items-center justify-center gap-3 py-2 animate-fade-slide-up">
-          <div className="voice-waveform">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <span className="text-sm text-primary font-medium">Listening...</span>
-        </div>
-      )}
-
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 px-2">
           {images.map((img, idx) => (
@@ -176,25 +190,36 @@ const ChatInput = ({
       )}
 
       <div className="panel-floating focus-lift p-2 flex items-end gap-2">
-        <label className="cursor-pointer btn-glow hover-lift transition-smooth">
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-            disabled={disabled}
-          />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            disabled={disabled}
-            className="pointer-events-none h-9 w-9 md:h-10 md:w-10 rounded-full hover:bg-secondary/50"
-          >
-            <Plus className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-          </Button>
-        </label>
+        {/* Hidden file inputs */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+          disabled={disabled}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleImageUpload}
+          className="hidden"
+          disabled={disabled}
+        />
+
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          disabled={disabled}
+          onClick={() => setShowImageSheet(true)}
+          className="h-9 w-9 md:h-10 md:w-10 rounded-full hover:bg-secondary/50 btn-glow hover-lift transition-smooth"
+        >
+          <Plus className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+        </Button>
 
         {showMic && (
           <Button
@@ -202,7 +227,7 @@ const ChatInput = ({
             size="icon"
             variant="ghost"
             disabled={disabled}
-            onClick={toggleRecording}
+            onClick={handleMicClick}
             className={`h-9 w-9 md:h-10 md:w-10 rounded-full transition-all ${
               isRecording
                 ? "bg-primary/20 text-primary mic-recording"
@@ -238,6 +263,92 @@ const ChatInput = ({
           <Send className="w-4 h-4 md:w-5 md:h-5" />
         </Button>
       </div>
+
+      {/* Voice Input Action Sheet */}
+      <ActionSheet
+        isOpen={showVoiceSheet}
+        onClose={handleCloseVoiceSheet}
+        title="Voice input"
+      >
+        <div className="flex flex-col items-center gap-6 py-4">
+          {/* Voice waveform */}
+          <div className="flex items-center justify-center gap-3">
+            {isRecording ? (
+              <>
+                <div className="voice-waveform">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="text-sm text-primary font-medium">Listening...</span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">Tap the mic to start</span>
+            )}
+          </div>
+
+          {/* Mic button */}
+          <Button
+            onClick={toggleRecording}
+            size="icon"
+            className={`h-16 w-16 rounded-full transition-all ${
+              isRecording
+                ? "bg-primary text-primary-foreground mic-recording"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
+          >
+            <Mic className="w-7 h-7" />
+          </Button>
+
+          <p className="text-xs text-muted-foreground text-center max-w-xs">
+            {isRecording
+              ? "Speak clearly into your device. Tap the mic again to stop."
+              : "Voice input will be converted to text in the message field."
+            }
+          </p>
+        </div>
+      </ActionSheet>
+
+      {/* Image Upload Action Sheet */}
+      <ActionSheet
+        isOpen={showImageSheet}
+        onClose={() => setShowImageSheet(false)}
+        title="Add images"
+      >
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex items-center gap-4 w-full p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors text-left"
+          >
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Camera className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Take photo</p>
+              <p className="text-xs text-muted-foreground">Use your camera to capture an image</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-4 w-full p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors text-left"
+          >
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <ImageIcon className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Choose from gallery</p>
+              <p className="text-xs text-muted-foreground">Select images from your device</p>
+            </div>
+          </button>
+
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Maximum file size: 20MB per image
+          </p>
+        </div>
+      </ActionSheet>
     </div>
   );
 };
