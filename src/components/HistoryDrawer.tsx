@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, X, Search, Wrench, MessageCircle } from "lucide-react";
+import { History, Search, Wrench, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,9 +16,11 @@ interface ChatHistory {
   messages: any[];
 }
 
+type HistoryMode = "pitCrew" | "pitLane";
+
 interface HistoryDrawerProps {
   onLoadChat: (messages: any[], chatId: string) => void;
-  onLoadCheck?: (messages: any[], chatId: string) => void;
+  onLoadCheck: (messages: any[], chatId: string) => void;
 }
 
 const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
@@ -69,24 +71,26 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
   );
 
   // Determine if a chat is a Pit Crew Check or Pit Lane Talk
-  const isPitCrewCheck = (chat: ChatHistory): boolean => {
+  const getHistoryMode = (chat: ChatHistory): HistoryMode => {
     // Check if the assistant response contains structured checklist indicators
     const assistantMsg = chat.messages.find(m => m.role === "assistant");
-    if (!assistantMsg) return false;
+    if (!assistantMsg) return "pitLane";
     
     const content = assistantMsg.content?.toLowerCase() || "";
-    return content.includes("safety level:") && 
+    const isPitCrewCheck = content.includes("safety level:") && 
            (content.includes("step") || content.includes("1.") || content.includes("checklist"));
+    
+    return isPitCrewCheck ? "pitCrew" : "pitLane";
   };
 
   const handleLoadChat = (chat: ChatHistory) => {
-    const isCheck = isPitCrewCheck(chat);
+    const mode = getHistoryMode(chat);
     
-    if (isCheck && onLoadCheck) {
-      // Load as Pit Crew Check - pass the chat ID to maintain session
+    if (mode === "pitCrew") {
+      // Load as Pit Crew Check - route to guided diagnosis screen
       onLoadCheck(chat.messages, chat.id);
     } else {
-      // Load as Pit Lane Talk
+      // Load as Pit Lane Talk - route to chat screen
       onLoadChat(chat.messages, chat.id);
     }
     setOpen(false);
@@ -129,7 +133,8 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
                 placeholder="Search history..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-card border-border/40 rounded-full"
+                className="pl-10 bg-card border-border/40 rounded-full text-base"
+                style={{ fontSize: '16px' }}
               />
             </div>
           </SheetHeader>
@@ -146,7 +151,8 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
             ) : (
               <div className="space-y-3 py-4">
                 {filteredChats.map((chat) => {
-                  const isCheck = isPitCrewCheck(chat);
+                  const mode = getHistoryMode(chat);
+                  const isCheck = mode === "pitCrew";
                   return (
                     <button
                       key={chat.id}

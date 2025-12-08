@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Wrench, ChevronRight } from "lucide-react";
+import { ArrowLeft, Wrench, Plus, Car, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -21,7 +21,15 @@ interface PitLaneTalkProps {
   chatId?: string | null;
   onBack: () => void;
   onStartGuidedCheck: (symptom: string) => void;
+  onNewChat?: () => void;
 }
+
+const suggestionChips = [
+  { label: "Service interval", query: "What's the recommended service interval for my car?" },
+  { label: "Tyre pressure", query: "What should my tyre pressure be?" },
+  { label: "Best engine oil", query: "What's the best engine oil for my vehicle?" },
+  { label: "Buying a used car", query: "What should I check when buying a used car?" },
+];
 
 const PitLaneTalk = ({
   vehicle,
@@ -30,6 +38,7 @@ const PitLaneTalk = ({
   chatId = null,
   onBack,
   onStartGuidedCheck,
+  onNewChat,
 }: PitLaneTalkProps) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
@@ -224,49 +233,86 @@ const PitLaneTalk = ({
     }
   };
 
+  const handleChipClick = (query: string) => {
+    handleSend(query, []);
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentChatId(null);
+    if (onNewChat) onNewChat();
+  };
+
   const isEmpty = messages.length === 0;
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col border-b border-border/20">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="btn-glow hover:bg-secondary/50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="btn-glow hover:bg-secondary/50"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
 
-          <span className="text-sm font-medium text-foreground">Pit Lane Talk</span>
+        <span className="text-sm font-medium text-foreground">Pit Lane Talk</span>
 
-          <div className="w-16" />
-        </div>
-        
-        {/* Mode info strip */}
-        <div className="flex items-center justify-between px-4 py-2 bg-card/30 text-xs">
-          <span className="text-muted-foreground">For symptoms and safety, use Pit Crew Check.</span>
-          <button
-            onClick={() => onStartGuidedCheck("")}
-            className="text-primary hover:text-primary/80 font-medium"
-          >
-            Start Pit Crew Check
-          </button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleNewChat}
+          className="btn-glow hover:bg-secondary/50"
+        >
+          <MessageSquarePlus className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Content */}
       {isEmpty ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <div className="w-full max-w-xl">
-            {/* Minimal empty state */}
-            <p className="text-center text-muted-foreground mb-6">
+        <div className="flex-1 flex flex-col px-4 pt-6 overflow-y-auto">
+          <div className="w-full max-w-xl mx-auto space-y-6">
+            {/* Subtitle */}
+            <p className="text-sm text-muted-foreground">
               Quick questions, maintenance tips, or general advice.
             </p>
-            <ChatInput onSend={handleSend} disabled={isLoading} showMic placeholder="Ask anything about your car... (you can use the mic)" />
+
+            {/* Suggestion chips */}
+            <div className="space-y-3">
+              <span className="text-xs text-muted-foreground/70">Try asking about</span>
+              <div className="flex flex-wrap gap-2">
+                {suggestionChips.map((chip) => (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleChipClick(chip.query)}
+                    className="px-3 py-1.5 text-sm rounded-full border border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Empty state hint */}
+            <div className="flex-1 flex items-center justify-center min-h-[200px]">
+              <p className="text-sm text-muted-foreground/50">
+                Your questions will appear here.
+              </p>
+            </div>
+          </div>
+
+          {/* Input at bottom */}
+          <div className="mt-auto pb-4 w-full max-w-xl mx-auto">
+            <ChatInput
+              onSend={handleSend}
+              disabled={isLoading}
+              showMic
+              placeholder="Ask anything about your car..."
+              variant="secondary"
+            />
           </div>
         </div>
       ) : (
@@ -290,9 +336,10 @@ const PitLaneTalk = ({
               {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40">
-                    <Wrench className="w-4 h-4 text-primary animate-pulse" />
+                    <Car className="w-4 h-4 text-primary" />
                   </div>
                   <div className="message-assistant">
+                    <p className="text-xs text-muted-foreground mb-2">Thinking...</p>
                     <div className="flex gap-1.5">
                       <div
                         className="w-2 h-2 bg-primary rounded-full animate-bounce"
@@ -315,24 +362,16 @@ const PitLaneTalk = ({
             </div>
           </div>
 
-          {/* Turn into guided check pill + input */}
+          {/* Input */}
           <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm">
-            <div className="max-w-3xl mx-auto w-full px-4 py-3 space-y-3">
-              {/* Guided check nudge - above input */}
-              {messages.length >= 2 && !isLoading && (
-                <button
-                  onClick={() =>
-                    onStartGuidedCheck(messages.find((m) => m.role === "user")?.content || "")
-                  }
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-full border border-primary/20 text-sm text-primary hover:bg-primary/5 transition-colors"
-                >
-                  <Wrench className="w-4 h-4" />
-                  Turn this into a Pit Crew Check
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
-              
-              <ChatInput onSend={handleSend} disabled={isLoading} showMic placeholder="Ask anything about your car..." variant="secondary" />
+            <div className="max-w-3xl mx-auto w-full px-4 py-3">
+              <ChatInput
+                onSend={handleSend}
+                disabled={isLoading}
+                showMic
+                placeholder="Ask anything about your car..."
+                variant="secondary"
+              />
             </div>
           </div>
         </>

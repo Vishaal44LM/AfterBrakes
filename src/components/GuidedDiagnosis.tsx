@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Wrench, ArrowLeft, MessageCircle, ChevronUp, ChevronDown, Save, RotateCcw } from "lucide-react";
+import { Wrench, ArrowLeft, MessageCircle, ChevronUp, ChevronDown, Save, RotateCcw, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GuidedCheckStep, { StepStatus } from "./GuidedCheckStep";
 import MechanicSummary from "./MechanicSummary";
@@ -21,6 +21,9 @@ interface GuidedDiagnosisProps {
   onBack: () => void;
   onOpenChat: () => void;
   onStartNewCheck: () => void;
+  fromHistory?: boolean;
+  historyMessages?: any[];
+  chatId?: string;
 }
 
 type SafetyLevel = "safe" | "caution" | "danger";
@@ -33,8 +36,11 @@ const GuidedDiagnosis = ({
   onBack,
   onOpenChat,
   onStartNewCheck,
+  fromHistory = false,
+  historyMessages,
+  chatId: existingChatId,
 }: GuidedDiagnosisProps) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!fromHistory);
   const [title, setTitle] = useState("");
   const [safetyLevel, setSafetyLevel] = useState<SafetyLevel | null>(null);
   const [safetyReason, setSafetyReason] = useState("");
@@ -46,7 +52,8 @@ const GuidedDiagnosis = ({
   const [showSummary, setShowSummary] = useState(false);
   const [rawResponse, setRawResponse] = useState("");
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(fromHistory);
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>(existingChatId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -59,8 +66,18 @@ const GuidedDiagnosis = ({
   }, [steps, isLoading]);
 
   useEffect(() => {
-    fetchDiagnosis();
-  }, []);
+    if (fromHistory && historyMessages) {
+      // Parse from history messages
+      const assistantMsg = historyMessages.find(m => m.role === "assistant");
+      if (assistantMsg?.content) {
+        setRawResponse(assistantMsg.content);
+        parseResponse(assistantMsg.content);
+        setIsLoading(false);
+      }
+    } else {
+      fetchDiagnosis();
+    }
+  }, [fromHistory, historyMessages]);
 
   const cleanText = (text: string): string => {
     return text
@@ -209,16 +226,34 @@ const GuidedDiagnosis = ({
       const checkTitle = title || `Check: ${symptom.substring(0, 50)}`;
       const vehicleTag = vehicle ? `${vehicle.manufacturer} ${vehicle.model}` : null;
       
-      await supabase.from("chat_history").insert({
-        user_id: userId,
-        title: checkTitle,
-        messages: [
-          { role: "user", content: symptom },
-          { role: "assistant", content: rawResponse },
-        ] as any,
-        vehicle_id: vehicle?.id || null,
-        vehicle_tag: vehicleTag,
-      });
+      if (currentChatId) {
+        // Update existing check
+        await supabase.from("chat_history").update({
+          title: checkTitle,
+          messages: [
+            { role: "user", content: symptom },
+            { role: "assistant", content: rawResponse },
+          ] as any,
+          vehicle_id: vehicle?.id || null,
+          vehicle_tag: vehicleTag,
+        }).eq("id", currentChatId);
+      } else {
+        // Create new check
+        const { data } = await supabase.from("chat_history").insert({
+          user_id: userId,
+          title: checkTitle,
+          messages: [
+            { role: "user", content: symptom },
+            { role: "assistant", content: rawResponse },
+          ] as any,
+          vehicle_id: vehicle?.id || null,
+          vehicle_tag: vehicleTag,
+        }).select().single();
+        
+        if (data) {
+          setCurrentChatId(data.id);
+        }
+      }
       
       setIsSaved(true);
       toast({
@@ -239,7 +274,7 @@ const GuidedDiagnosis = ({
   const totalSteps = steps.length;
   const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-  // Skeleton loading state
+  // Scanning preloader state
   if (isLoading && steps.length === 0) {
     return (
       <div className="flex flex-col h-full">
@@ -263,32 +298,50 @@ const GuidedDiagnosis = ({
           <div className="w-20" />
         </div>
 
-        {/* Skeleton content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto space-y-6 animate-pulse">
+        {/* Scanning animation */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <div className="relative mb-8">
+            {/* Car icon with scanning effect */}
+            <div className="relative w-24 h-24 flex items-center justify-center">
+              <Car className="w-12 h-12 text-muted-foreground" />
+              
+              {/* Scanning dots orbiting around */}
+              <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rounded-full" />
+              </div>
+              <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary/70 rounded-full" />
+              </div>
+              <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '2s' }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary/40 rounded-full" />
+              </div>
+              
+              {/* Pulse ring */}
+              <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+            </div>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mb-8">Diagnosing...</p>
+
+          {/* Skeleton content */}
+          <div className="w-full max-w-2xl space-y-4 animate-pulse">
             {/* Safety badge skeleton */}
-            <div className="h-8 w-40 bg-secondary/50 rounded-full" />
+            <div className="h-8 w-40 bg-secondary/50 rounded-full skeleton-shimmer" />
             
             {/* Title skeleton */}
-            <div className="h-6 w-3/4 bg-secondary/50 rounded-lg" />
-            
-            {/* Intro skeleton */}
-            <div className="space-y-2">
-              <div className="h-4 w-full bg-secondary/30 rounded" />
-              <div className="h-4 w-2/3 bg-secondary/30 rounded" />
-            </div>
+            <div className="h-6 w-3/4 bg-secondary/50 rounded-lg skeleton-shimmer" />
             
             {/* Steps skeleton */}
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="bg-card/50 rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-secondary/50 rounded-full" />
-                    <div className="h-5 w-1/2 bg-secondary/50 rounded" />
+                    <div className="w-8 h-8 bg-secondary/50 rounded-full skeleton-shimmer" />
+                    <div className="h-5 w-1/2 bg-secondary/50 rounded skeleton-shimmer" />
                   </div>
                   <div className="space-y-2 pl-11">
-                    <div className="h-3 w-full bg-secondary/30 rounded" />
-                    <div className="h-3 w-3/4 bg-secondary/30 rounded" />
+                    <div className="h-3 w-full bg-secondary/30 rounded skeleton-shimmer" />
+                    <div className="h-3 w-3/4 bg-secondary/30 rounded skeleton-shimmer" />
                   </div>
                 </div>
               ))}
@@ -296,11 +349,10 @@ const GuidedDiagnosis = ({
             
             {/* Summary skeleton */}
             <div className="bg-card/50 rounded-2xl p-4 space-y-3">
-              <div className="h-5 w-40 bg-secondary/50 rounded" />
+              <div className="h-5 w-40 bg-secondary/50 rounded skeleton-shimmer" />
               <div className="space-y-2">
-                <div className="h-3 w-full bg-secondary/30 rounded" />
-                <div className="h-3 w-full bg-secondary/30 rounded" />
-                <div className="h-3 w-2/3 bg-secondary/30 rounded" />
+                <div className="h-3 w-full bg-secondary/30 rounded skeleton-shimmer" />
+                <div className="h-3 w-2/3 bg-secondary/30 rounded skeleton-shimmer" />
               </div>
             </div>
           </div>
@@ -363,6 +415,13 @@ const GuidedDiagnosis = ({
           {isExpanded && (
             <div className="flex-1 px-4 py-6">
               <div className="max-w-2xl mx-auto space-y-6">
+                {/* From history indicator */}
+                {fromHistory && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 rounded-full px-3 py-1.5 w-fit">
+                    <span>Viewing saved check</span>
+                  </div>
+                )}
+
                 {/* Safety reason */}
                 {safetyReason && (
                   <p className="text-sm text-muted-foreground animate-fade-slide-up">
