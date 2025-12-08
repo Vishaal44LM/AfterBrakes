@@ -61,11 +61,6 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
     }
   };
 
-  const handleTryExample = () => {
-    setSymptom("Engine makes a rattling noise when cold, especially in the morning. Goes away after 5 minutes of driving.");
-    setShowHelper(false);
-  };
-
   return (
     <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
       {/* Compact Pit Crew Check card */}
@@ -113,7 +108,7 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
         </div>
       </div>
 
-      {/* First-open helper card */}
+      {/* First-open helper card - without "Try an example" */}
       {showHelper && (
         <div className="bg-card/50 border border-border/30 rounded-2xl p-4 animate-fade-slide-up" style={{ animationDelay: "50ms" }}>
           <div className="flex items-start gap-3">
@@ -134,14 +129,6 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
                   <span>Follow a mechanic-ready checklist</span>
                 </li>
               </ul>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleTryExample}
-                className="mt-3 text-primary hover:text-primary/80 hover:bg-primary/10 -ml-2"
-              >
-                Try an example
-              </Button>
             </div>
             <Button
               variant="ghost"
@@ -210,8 +197,9 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
             onKeyDown={handleKeyDown}
             placeholder="Describe what your car is doing..."
             disabled={disabled}
-            className="flex-1 min-h-[44px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-body placeholder:text-muted-foreground/60"
+            className="flex-1 min-h-[44px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-body placeholder:text-muted-foreground/60 text-base"
             rows={2}
+            style={{ fontSize: '16px' }}
           />
 
           <Button
