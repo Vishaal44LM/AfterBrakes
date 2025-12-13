@@ -1,1 +1,1 @@
-Your AI Automotive Expert
+AI Automotive Expert
