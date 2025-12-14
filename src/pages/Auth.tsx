@@ -58,7 +58,7 @@ const Auth = () => {
         <div className="card-vignette p-8 mb-8 text-center">
           <Car className="w-16 h-16 text-primary mx-auto mb-4" />
           <h1 className="text-heading text-foreground mb-2 font-serif">After Brakes</h1>
-          <p className="text-body text-muted-foreground">AI Automotive Expert​</p>
+          <p className="text-body text-muted-foreground">Pit crew for every drive</p>
         </div>
 
         {/* Auth form */}
