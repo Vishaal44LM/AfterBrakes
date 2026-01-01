@@ -5,13 +5,14 @@ import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
 import PitCrewCheck from "@/components/PitCrewCheck";
+import PitCrewWizard from "@/components/PitCrewWizard";
 import GuidedDiagnosis from "@/components/GuidedDiagnosis";
 import PitLaneTalk from "@/components/PitLaneTalk";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 
-type AppMode = "home" | "guided" | "chat";
+type AppMode = "home" | "wizard" | "guided" | "chat";
 
 interface GuidedSession {
   symptom: string;
@@ -24,6 +25,7 @@ interface GuidedSession {
 interface ChatSession {
   messages: any[];
   chatId: string | null;
+  prefillMessage?: string;
 }
 
 const Index = () => {
@@ -33,7 +35,8 @@ const Index = () => {
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession>({
     messages: [],
-    chatId: null
+    chatId: null,
+    prefillMessage: undefined
   });
 
   const { user, signOut, loading } = useAuth();
@@ -63,6 +66,10 @@ const Index = () => {
     setVehicleToast(`Now diagnosing: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year}`);
   };
 
+  const handleStartWizard = () => {
+    setMode("wizard");
+  };
+
   const handleStartGuidedCheck = (symptom: string, images: string[] = []) => {
     if (symptom.trim() || images.length > 0) {
       setGuidedSession({
@@ -74,10 +81,11 @@ const Index = () => {
     }
   };
 
-  const handleOpenChat = () => {
+  const handleOpenChat = (prefillMessage?: string) => {
     setChatSession({
       messages: [],
-      chatId: null
+      chatId: null,
+      prefillMessage
     });
     setMode("chat");
   };
@@ -87,7 +95,8 @@ const Index = () => {
     setGuidedSession(null);
     setChatSession({
       messages: [],
-      chatId: null
+      chatId: null,
+      prefillMessage: undefined
     });
   };
 
@@ -194,9 +203,19 @@ const Index = () => {
           <PitCrewCheck
             onSubmit={handleStartGuidedCheck}
             disabled={false}
-            onOpenChat={handleOpenChat}
+            onOpenChat={() => handleOpenChat()}
           />
         </div>
+      )}
+
+      {mode === "wizard" && user && (
+        <PitCrewWizard
+          vehicle={activeVehicle}
+          userId={user.id}
+          onBack={handleBack}
+          onOpenChat={handleOpenChat}
+          onComplete={handleBack}
+        />
       )}
 
       {mode === "guided" && guidedSession && user && (
@@ -206,7 +225,7 @@ const Index = () => {
           vehicle={activeVehicle}
           userId={user.id}
           onBack={handleBack}
-          onOpenChat={handleOpenChat}
+          onOpenChat={() => handleOpenChat()}
           onStartNewCheck={handleStartNewCheck}
           fromHistory={guidedSession.fromHistory}
           historyMessages={guidedSession.historyMessages}
@@ -223,6 +242,7 @@ const Index = () => {
           onBack={handleBack}
           onStartGuidedCheck={(symptom) => handleStartGuidedCheck(symptom)}
           onNewChat={handleNewChat}
+          prefillMessage={chatSession.prefillMessage}
         />
       )}
 
