@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Wrench, Plus, Car, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, Car, MessageSquarePlus, Sparkles, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
-import MechanicSummary from "./MechanicSummary";
+import CrewsTakeSheet from "./CrewsTakeSheet";
 import { useToast } from "@/components/ui/use-toast";
 import { Vehicle } from "@/hooks/useVehicles";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ interface PitLaneTalkProps {
   onBack: () => void;
   onStartGuidedCheck: (symptom: string) => void;
   onNewChat?: () => void;
+  prefillMessage?: string;
 }
 
 const suggestionChips = [
@@ -39,11 +40,13 @@ const PitLaneTalk = ({
   onBack,
   onStartGuidedCheck,
   onNewChat,
+  prefillMessage,
 }: PitLaneTalkProps) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId);
-  const [showMechanicSummary, setShowMechanicSummary] = useState(false);
+  const [showCrewsTake, setShowCrewsTake] = useState(false);
+  const [hasCrewsTakeUpdate, setHasCrewsTakeUpdate] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -54,6 +57,13 @@ const PitLaneTalk = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Handle prefill message
+  useEffect(() => {
+    if (prefillMessage && messages.length === 0) {
+      handleSend(prefillMessage, []);
+    }
+  }, [prefillMessage]);
 
   // Update messages when initialMessages change (e.g., loading from history)
   useEffect(() => {
@@ -214,6 +224,7 @@ const PitLaneTalk = ({
 
     try {
       await streamChat(newMessages);
+      setHasCrewsTakeUpdate(true);
       setTimeout(() => {
         setMessages((current) => {
           saveChatHistory(current);
@@ -240,7 +251,13 @@ const PitLaneTalk = ({
   const handleNewChat = () => {
     setMessages([]);
     setCurrentChatId(null);
+    setHasCrewsTakeUpdate(false);
     if (onNewChat) onNewChat();
+  };
+
+  const handleOpenCrewsTake = () => {
+    setShowCrewsTake(true);
+    setHasCrewsTakeUpdate(false);
   };
 
   const isEmpty = messages.length === 0;
@@ -261,47 +278,73 @@ const PitLaneTalk = ({
 
         <span className="text-sm font-medium text-foreground">Pit Lane Talk</span>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleNewChat}
-          className="btn-glow hover:bg-secondary/50"
-        >
-          <MessageSquarePlus className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenCrewsTake}
+              className="relative btn-glow hover:bg-secondary/50 text-xs gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Crew's Take</span>
+              {hasCrewsTakeUpdate && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
+              )}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewChat}
+            className="btn-glow hover:bg-secondary/50"
+          >
+            <MessageSquarePlus className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
       {isEmpty ? (
-        <div className="flex-1 flex flex-col px-4 pt-4 overflow-y-auto">
-          <div className="w-full max-w-xl mx-auto space-y-3">
-            {/* Subtitle */}
-            <p className="text-sm text-muted-foreground">
-              Quick questions, maintenance tips, or general advice.
-            </p>
+        <div className="flex-1 flex flex-col px-4 overflow-y-auto">
+          {/* Assistant header card */}
+          <div className="w-full max-w-xl mx-auto pt-4">
+            <div className="bg-card/80 border border-border/30 rounded-2xl p-4 animate-fade-slide-up">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Headphones className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Pit Lane Talk</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Quick car advice, just like messaging your pit engineer.
+                  </p>
+                </div>
+              </div>
 
-            {/* Suggestion chips */}
-            <div className="space-y-2">
-              <span className="text-xs text-muted-foreground/60">Try asking about</span>
-              <div className="flex flex-wrap gap-2">
-                {suggestionChips.map((chip) => (
-                  <button
-                    key={chip.label}
-                    onClick={() => handleChipClick(chip.query)}
-                    className="px-3 py-1.5 text-sm rounded-full border border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+              {/* Suggestion chips inside card */}
+              <div className="space-y-2">
+                <span className="text-xs text-muted-foreground/60">Try asking about</span>
+                <div className="flex flex-wrap gap-2">
+                  {suggestionChips.map((chip) => (
+                    <button
+                      key={chip.label}
+                      onClick={() => handleChipClick(chip.query)}
+                      className="px-3 py-1.5 text-sm rounded-full border border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Empty state hint */}
-            <div className="flex-1 flex items-center justify-center min-h-[160px]">
-              <p className="text-xs text-muted-foreground/40">
-                Your questions will appear here.
-              </p>
-            </div>
+          {/* Empty state hint */}
+          <div className="flex-1 flex items-start justify-center pt-8">
+            <p className="text-xs text-muted-foreground/30">
+              Ask anything about your car to get started.
+            </p>
           </div>
 
           {/* Input at bottom */}
@@ -327,9 +370,6 @@ const PitLaneTalk = ({
                   role={msg.role}
                   content={msg.content}
                   images={msg.images}
-                  onShare={
-                    msg.role === "assistant" ? () => setShowMechanicSummary(true) : undefined
-                  }
                 />
               ))}
 
@@ -362,8 +402,8 @@ const PitLaneTalk = ({
             </div>
           </div>
 
-          {/* Input */}
-          <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm">
+          {/* Input - docked at bottom */}
+          <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
             <div className="max-w-3xl mx-auto w-full px-4 py-3">
               <ChatInput
                 onSend={handleSend}
@@ -377,13 +417,13 @@ const PitLaneTalk = ({
         </>
       )}
 
-      {showMechanicSummary && (
-        <MechanicSummary
-          messages={messages}
-          vehicle={vehicle}
-          onClose={() => setShowMechanicSummary(false)}
-        />
-      )}
+      {/* Crew's Take Sheet */}
+      <CrewsTakeSheet
+        isOpen={showCrewsTake}
+        onClose={() => setShowCrewsTake(false)}
+        messages={messages}
+        hasUpdates={hasCrewsTakeUpdate}
+      />
     </div>
   );
 };

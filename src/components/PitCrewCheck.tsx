@@ -108,7 +108,7 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
         </div>
       </div>
 
-      {/* First-open helper card - without "Try an example" */}
+      {/* First-open helper card */}
       {showHelper && (
         <div className="bg-card/50 border border-border/30 rounded-2xl p-4 animate-fade-slide-up" style={{ animationDelay: "50ms" }}>
           <div className="flex items-start gap-3">
@@ -130,14 +130,6 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
                 </li>
               </ul>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowHelper(false)}
-              className="h-6 w-6 shrink-0"
-            >
-              <X className="w-3 h-3" />
-            </Button>
           </div>
         </div>
       )}

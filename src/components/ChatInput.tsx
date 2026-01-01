@@ -340,7 +340,7 @@ const ChatInput = ({
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">Choose from gallery</p>
-              <p className="text-xs text-muted-foreground">Select images from your device</p>
+              <p className="text-xs text-muted-foreground">Select existing images from your device</p>
             </div>
           </button>
 
