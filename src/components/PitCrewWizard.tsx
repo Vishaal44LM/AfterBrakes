@@ -358,7 +358,7 @@ const PitCrewWizard = ({
     }
   };
 
-  const parseResult = (text: string) => {
+  const parseResult = async (text: string) => {
     // Extract safety level
     let safetyLevel: SafetyLevel = "caution";
     const safetyMatch = text.match(
@@ -403,14 +403,39 @@ const PitCrewWizard = ({
       timeframe = "Check at next service";
     }
 
-    setResult({
+    const resultData = {
       safetyLevel,
       summary,
       likelyCauses,
       whatToWatch,
       timeframe,
       rawResponse: text,
-    });
+    };
+
+    setResult(resultData);
+
+    // Auto-save to history
+    if (userId) {
+      try {
+        const checkTitle = summary.substring(0, 100);
+        const vehicleTag = vehicle ? `${vehicle.manufacturer} ${vehicle.model}` : null;
+
+        await supabase.from("chat_history").insert({
+          user_id: userId,
+          title: checkTitle,
+          messages: [
+            { role: "user", content: buildSymptomText() },
+            { role: "assistant", content: text },
+          ] as any,
+          vehicle_id: vehicle?.id || null,
+          vehicle_tag: vehicleTag,
+        });
+
+        setIsSaved(true);
+      } catch (error) {
+        console.error("Error auto-saving check:", error);
+      }
+    }
   };
 
   const handleSaveCheck = async () => {
@@ -656,21 +681,15 @@ const PitCrewWizard = ({
                 </div>
               </button>
 
-              <button
-                onClick={handleSaveCheck}
-                disabled={isSaved}
-                className="flex items-center gap-4 w-full p-4 rounded-2xl bg-card border border-border/40 hover:border-primary/40 transition-colors text-left disabled:opacity-50"
-              >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Save className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-4 w-full p-4 rounded-2xl bg-card border border-border/40">
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {isSaved ? "Saved to log" : "Save to maintenance log"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Keep a record of this check</p>
+                  <p className="text-sm font-medium text-foreground">Saved to history</p>
+                  <p className="text-xs text-muted-foreground">This check is saved automatically</p>
                 </div>
-              </button>
+              </div>
 
               <button
                 onClick={handleAskFollowUp}
@@ -692,32 +711,114 @@ const PitCrewWizard = ({
           </div>
         </div>
 
-        {/* Mechanic's View Modal */}
+        {/* Mechanic's View Modal - Full Screen */}
         {showMechanicView && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowMechanicView(false)}>
-            <div
-              className="w-full max-w-lg mx-4 bg-card border border-border/40 rounded-2xl shadow-lg max-h-[85vh] flex flex-col animate-fade-slide-up"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-border/20">
-                <h3 className="text-lg font-semibold text-foreground">Mechanic's View</h3>
-                <Button variant="ghost" size="icon" onClick={() => setShowMechanicView(false)} className="h-8 w-8">
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
+          <div className="fixed inset-0 z-50 bg-background flex flex-col animate-fade-slide-up">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 shrink-0">
+              <div className="w-8" />
+              <h3 className="text-lg font-semibold text-foreground">Mechanic's View</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowMechanicView(false)} className="h-8 w-8">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
-                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono bg-secondary/30 p-4 rounded-xl border border-border/20">
-                  {generateMechanicSummary()}
-                </pre>
-              </div>
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <div className="max-w-lg mx-auto">
+                <div className="bg-card border border-border/40 rounded-2xl p-5 space-y-5">
+                  {/* Header line */}
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground tracking-wide">MECHANIC HANDOVER SUMMARY</h4>
+                    <div className="h-px bg-border/40 mt-3" />
+                  </div>
 
-              <div className="flex gap-2 p-4 border-t border-border/20">
+                  {/* Vehicle Information */}
+                  <div>
+                    <h5 className="text-xs font-semibold text-primary mb-2 tracking-wide">VEHICLE INFORMATION</h5>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {vehicle && (
+                        <>
+                          <li>• <span className="text-foreground">{vehicle.manufacturer} {vehicle.model}</span> ({vehicle.year})</li>
+                          <li>• Fuel: <span className="text-foreground">{vehicle.fuel?.toUpperCase() || "N/A"}</span></li>
+                        </>
+                      )}
+                      <li>• Odometer: <span className="text-foreground">{data.mileage}</span></li>
+                    </ul>
+                  </div>
+
+                  {/* Reported Symptoms */}
+                  <div>
+                    <h5 className="text-xs font-semibold text-primary mb-2 tracking-wide">REPORTED SYMPTOMS</h5>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Category: <span className="text-foreground capitalize">{data.category}</span></li>
+                      <li>• Issue: <span className="text-foreground">{data.subSymptom}</span></li>
+                      <li>• Occurs: <span className="text-foreground">{data.where} driving, {data.when}</span></li>
+                      {data.weather && <li>• Weather: <span className="text-foreground">{data.weather}</span></li>}
+                      {data.recentWork && data.recentWorkNote && (
+                        <li>• Recent work: <span className="text-foreground">{data.recentWorkNote}</span></li>
+                      )}
+                      {data.description && (
+                        <li>• Notes: <span className="text-foreground">{data.description}</span></li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* AI Analysis & Suspected Causes */}
+                  <div>
+                    <h5 className="text-xs font-semibold text-primary mb-2 tracking-wide">AI ANALYSIS & SUSPECTED CAUSES</h5>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>
+                        • <span className={`font-bold ${
+                          result.safetyLevel === "safe" ? "text-green-400" :
+                          result.safetyLevel === "caution" ? "text-amber-400" : "text-red-400"
+                        }`}>
+                          [SEVERITY: {result.safetyLevel === "safe" ? "safe" : result.safetyLevel === "caution" ? "caution" : "urgent"}]
+                        </span>{" "}
+                        <span className="text-foreground">{result.summary}</span>
+                      </li>
+                      {result.likelyCauses.map((cause, i) => (
+                        <li key={i}>• <span className="text-foreground">{cause}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Suggested Checks */}
+                  <div>
+                    <h5 className="text-xs font-semibold text-primary mb-2 tracking-wide">SUGGESTED CHECKS</h5>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Physical inspection of components mentioned above</li>
+                      <li>• Diagnostic scan if applicable</li>
+                      <li>• Verify symptoms match AI analysis</li>
+                    </ul>
+                  </div>
+
+                  {/* Notes for Mechanic */}
+                  <div>
+                    <h5 className="text-xs font-semibold text-primary mb-2 tracking-wide">NOTES FOR MECHANIC</h5>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Timeframe: <span className="text-foreground">{result.timeframe}</span></li>
+                      <li>• What to watch: <span className="text-foreground">{result.whatToWatch}</span></li>
+                    </ul>
+                  </div>
+
+                  <div className="h-px bg-border/40" />
+
+                  <p className="text-xs text-muted-foreground/60 text-center">
+                    This summary is an AI-generated aid for discussion. Final diagnosis should be made by a qualified mechanic.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky bottom bar */}
+            <div className="shrink-0 border-t border-border/20 bg-background p-4">
+              <div className="max-w-lg mx-auto flex gap-3">
                 <Button onClick={handleCopySummary} className="flex-1 btn-glow">
                   {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                   {copied ? "Copied!" : "Copy summary"}
                 </Button>
-                <Button onClick={handleDownloadPdf} variant="outline" className="flex-1">
+                <Button onClick={handleDownloadPdf} variant="outline" className="flex-1 border-border/40">
                   <Download className="w-4 h-4 mr-2" />
                   Download PDF
                 </Button>

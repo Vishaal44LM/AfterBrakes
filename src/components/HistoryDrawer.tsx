@@ -125,7 +125,7 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
         <div className="flex flex-col h-full">
           <SheetHeader className="p-4 md:p-6 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg font-semibold">History</SheetTitle>
+              <SheetTitle className="text-lg font-semibold">Vehicle History</SheetTitle>
             </div>
             <div className="mt-4 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
