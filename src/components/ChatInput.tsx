@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, X, Mic, Plus, Camera, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,9 +25,11 @@ const ChatInput = ({
   const [isRecording, setIsRecording] = useState(false);
   const [showVoiceSheet, setShowVoiceSheet] = useState(false);
   const [showImageSheet, setShowImageSheet] = useState(false);
+  const [holdStartTime, setHoldStartTime] = useState<number | null>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const transcriptRef = useRef<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,13 +54,14 @@ const ChatInput = ({
           }
         }
         if (finalTranscript) {
-          setMessage(prev => prev + finalTranscript);
+          transcriptRef.current += finalTranscript;
         }
       };
       
       recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
+        setShowVoiceSheet(false);
         toast({
           title: "Voice input error",
           description: "Could not process voice input. Please try again.",
@@ -78,7 +81,7 @@ const ChatInput = ({
     };
   }, [toast, showMic]);
 
-  const toggleRecording = () => {
+  const startRecording = useCallback(() => {
     if (!recognitionRef.current) {
       toast({
         title: "Not supported",
@@ -87,29 +90,53 @@ const ChatInput = ({
       });
       return;
     }
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
+    transcriptRef.current = "";
+    try {
       recognitionRef.current.start();
       setIsRecording(true);
+      setHoldStartTime(Date.now());
+    } catch (e) {
+      console.error("Error starting recognition:", e);
     }
-  };
+  }, [toast]);
 
-  const handleMicClick = () => {
-    setShowVoiceSheet(true);
-    if (!isRecording) {
-      toggleRecording();
-    }
-  };
-
-  const handleCloseVoiceSheet = () => {
-    if (isRecording && recognitionRef.current) {
+  const stopRecording = useCallback((cancelled: boolean) => {
+    if (recognitionRef.current && isRecording) {
       recognitionRef.current.stop();
       setIsRecording(false);
+      
+      if (!cancelled && transcriptRef.current.trim()) {
+        setMessage(prev => prev + transcriptRef.current);
+        toast({
+          title: "Voice captured",
+          description: "Your speech has been added to the message.",
+        });
+      } else if (cancelled) {
+        toast({
+          title: "Cancelled",
+          description: "Voice input was cancelled.",
+        });
+      }
+      transcriptRef.current = "";
     }
+    setHoldStartTime(null);
     setShowVoiceSheet(false);
-  };
+  }, [isRecording, toast]);
+
+  const handleMicPressStart = useCallback(() => {
+    setShowVoiceSheet(true);
+    startRecording();
+  }, [startRecording]);
+
+  const handleMicPressEnd = useCallback(() => {
+    // If held for less than 500ms, treat as cancel
+    const wasShortPress = holdStartTime && (Date.now() - holdStartTime) < 500;
+    stopRecording(wasShortPress || false);
+  }, [holdStartTime, stopRecording]);
+
+  const handleCloseVoiceSheet = useCallback(() => {
+    stopRecording(true);
+  }, [stopRecording]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -139,7 +166,6 @@ const ChatInput = ({
       reader.readAsDataURL(file);
     }
     
-    // Reset input value to allow selecting same file again
     e.target.value = '';
   };
 
@@ -227,8 +253,12 @@ const ChatInput = ({
             size="icon"
             variant="ghost"
             disabled={disabled}
-            onClick={handleMicClick}
-            className={`h-9 w-9 md:h-10 md:w-10 rounded-full transition-all ${
+            onMouseDown={handleMicPressStart}
+            onMouseUp={handleMicPressEnd}
+            onMouseLeave={() => isRecording && handleMicPressEnd()}
+            onTouchStart={handleMicPressStart}
+            onTouchEnd={handleMicPressEnd}
+            className={`h-9 w-9 md:h-10 md:w-10 rounded-full transition-all select-none ${
               isRecording
                 ? "bg-primary/20 text-primary mic-recording"
                 : "hover:bg-secondary/50 text-muted-foreground"
@@ -264,7 +294,7 @@ const ChatInput = ({
         </Button>
       </div>
 
-      {/* Voice Input Action Sheet */}
+      {/* Voice Input Action Sheet - Hold to talk */}
       <ActionSheet
         isOpen={showVoiceSheet}
         onClose={handleCloseVoiceSheet}
@@ -285,27 +315,25 @@ const ChatInput = ({
                 <span className="text-sm text-primary font-medium">Listening...</span>
               </>
             ) : (
-              <span className="text-sm text-muted-foreground">Tap the mic to start</span>
+              <span className="text-sm text-muted-foreground">Release to cancel</span>
             )}
           </div>
 
-          {/* Mic button */}
-          <Button
-            onClick={toggleRecording}
-            size="icon"
-            className={`h-16 w-16 rounded-full transition-all ${
+          {/* Mic indicator */}
+          <div
+            className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${
               isRecording
                 ? "bg-primary text-primary-foreground mic-recording"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
+                : "bg-secondary text-foreground"
             }`}
           >
             <Mic className="w-7 h-7" />
-          </Button>
+          </div>
 
           <p className="text-xs text-muted-foreground text-center max-w-xs">
             {isRecording
-              ? "Speak clearly into your device. Tap the mic again to stop."
-              : "Voice input will be converted to text in the message field."
+              ? "Keep holding to record. Release to add to message."
+              : "Hold the mic button to record voice input."
             }
           </p>
         </div>

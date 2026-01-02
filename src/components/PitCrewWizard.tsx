@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   Wrench,
@@ -22,6 +22,8 @@ import {
   Copy,
   Download,
   X,
+  Mic,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +31,7 @@ import { Vehicle } from "@/hooks/useVehicles";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
 import SeverityIndicator from "./SeverityIndicator";
+import ActionSheet from "./ActionSheet";
 
 interface PitCrewWizardProps {
   vehicle: Vehicle | null;
@@ -152,7 +155,141 @@ const PitCrewWizard = ({
   const [showMechanicView, setShowMechanicView] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showImageSheet, setShowImageSheet] = useState(false);
+  const [showVoiceSheet, setShowVoiceSheet] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [holdStartTime, setHoldStartTime] = useState<number | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      recognitionRef.current = new SpeechRecognitionAPI();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+      
+      recognitionRef.current.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          }
+        }
+        if (finalTranscript) {
+          transcriptRef.current += finalTranscript;
+        }
+      };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        setShowVoiceSheet(false);
+      };
+      
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const startRecording = useCallback(() => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Not supported",
+        description: "Voice input is not supported in this browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+    transcriptRef.current = "";
+    try {
+      recognitionRef.current.start();
+      setIsRecording(true);
+      setHoldStartTime(Date.now());
+    } catch (e) {
+      console.error("Error starting recognition:", e);
+    }
+  }, [toast]);
+
+  const stopRecording = useCallback((cancelled: boolean) => {
+    if (recognitionRef.current && isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      
+      if (!cancelled && transcriptRef.current.trim()) {
+        setData(prev => ({ ...prev, description: prev.description + transcriptRef.current }));
+        toast({
+          title: "Voice captured",
+          description: "Your speech has been added.",
+        });
+      } else if (cancelled) {
+        toast({
+          title: "Cancelled",
+          description: "Voice input was cancelled.",
+        });
+      }
+      transcriptRef.current = "";
+    }
+    setHoldStartTime(null);
+    setShowVoiceSheet(false);
+  }, [isRecording, toast]);
+
+  const handleMicPressStart = useCallback(() => {
+    setShowVoiceSheet(true);
+    startRecording();
+  }, [startRecording]);
+
+  const handleMicPressEnd = useCallback(() => {
+    const wasShortPress = holdStartTime && (Date.now() - holdStartTime) < 500;
+    stopRecording(wasShortPress || false);
+  }, [holdStartTime, stopRecording]);
+
+  const handleCloseVoiceSheet = useCallback(() => {
+    stopRecording(true);
+  }, [stopRecording]);
+
+  const handleFileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newImages: string[] = [];
+    let processedCount = 0;
+    
+    for (const file of Array.from(files)) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 20MB limit`,
+          variant: "destructive"
+        });
+        processedCount++;
+        continue;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newImages.push(reader.result as string);
+        processedCount++;
+        if (processedCount === files.length) {
+          setData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+          setShowImageSheet(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  };
 
   // Persist progress to localStorage
   useEffect(() => {
@@ -1072,6 +1209,24 @@ const PitCrewWizard = ({
                 <p className="text-sm text-muted-foreground">Photos and notes help with diagnosis</p>
               </div>
 
+              {/* Hidden file inputs */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileImageUpload}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileImageUpload}
+                className="hidden"
+              />
+
               <div className="space-y-4">
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">Photos</label>
@@ -1096,30 +1251,131 @@ const PitCrewWizard = ({
                     </div>
                   )}
 
-                  <label className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-dashed border-border/60 hover:border-primary/40 transition-colors cursor-pointer">
+                  <button 
+                    onClick={() => setShowImageSheet(true)}
+                    className="flex items-center gap-3 w-full p-4 rounded-2xl bg-card border border-dashed border-border/60 hover:border-primary/40 transition-colors"
+                  >
                     <Camera className="w-6 h-6 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Add photos of the issue</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-foreground">Describe sounds, smells, or vibrations</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-foreground">Describe sounds, smells, or vibrations</label>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onMouseDown={handleMicPressStart}
+                      onMouseUp={handleMicPressEnd}
+                      onMouseLeave={() => isRecording && handleMicPressEnd()}
+                      onTouchStart={handleMicPressStart}
+                      onTouchEnd={handleMicPressEnd}
+                      className={`h-8 w-8 rounded-full transition-all select-none ${
+                        isRecording
+                          ? "bg-primary/20 text-primary mic-recording"
+                          : "hover:bg-secondary/50 text-muted-foreground"
+                      }`}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <Textarea
                     value={data.description}
                     onChange={(e) => setData((prev) => ({ ...prev, description: e.target.value }))}
-                    placeholder="E.g., loud grinding noise from front right when braking..."
+                    placeholder="E.g., loud grinding noise from front right when braking... (or hold mic to speak)"
                     className="min-h-[100px] bg-card border-border/40"
                     style={{ fontSize: "16px" }}
                   />
                 </div>
               </div>
+
+              {/* Voice Input Action Sheet */}
+              <ActionSheet
+                isOpen={showVoiceSheet}
+                onClose={handleCloseVoiceSheet}
+                title="Voice input"
+              >
+                <div className="flex flex-col items-center gap-6 py-4">
+                  <div className="flex items-center justify-center gap-3">
+                    {isRecording ? (
+                      <>
+                        <div className="voice-waveform">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                        <span className="text-sm text-primary font-medium">Listening...</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Release to cancel</span>
+                    )}
+                  </div>
+
+                  <div
+                    className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${
+                      isRecording
+                        ? "bg-primary text-primary-foreground mic-recording"
+                        : "bg-secondary text-foreground"
+                    }`}
+                  >
+                    <Mic className="w-7 h-7" />
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center max-w-xs">
+                    {isRecording
+                      ? "Keep holding to record. Release to add to notes."
+                      : "Hold the mic button to record voice input."
+                    }
+                  </p>
+                </div>
+              </ActionSheet>
+
+              {/* Image Upload Action Sheet */}
+              <ActionSheet
+                isOpen={showImageSheet}
+                onClose={() => setShowImageSheet(false)}
+                title="Add images"
+              >
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      cameraInputRef.current?.click();
+                    }}
+                    className="flex items-center gap-4 w-full p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors text-left"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Camera className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Take photo</p>
+                      <p className="text-xs text-muted-foreground">Use your camera to capture an image</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex items-center gap-4 w-full p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors text-left"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <ImageIcon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Choose from gallery</p>
+                      <p className="text-xs text-muted-foreground">Select existing images from your device</p>
+                    </div>
+                  </button>
+
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Maximum file size: 20MB per image
+                  </p>
+                </div>
+              </ActionSheet>
             </div>
           )}
         </div>
