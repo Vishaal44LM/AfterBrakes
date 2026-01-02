@@ -65,10 +65,10 @@ const Auth = () => {
         <div className="panel-floating p-6 md:p-8">
           <div className="text-center mb-6">
             <h2 className="text-subheading text-foreground mb-2">
-              {isLogin ? "Login to continue" : "Get Started"}
+              {isLogin ? "Welcome Back" : "Get Started"}
             </h2>
             <p className="text-small text-muted-foreground">
-              {isLogin ? "Enter your credentials" : "Create your account"}
+              {isLogin ? "Sign in to continue" : "Create your account"}
             </p>
           </div>
 
@@ -95,7 +95,7 @@ const Auth = () => {
             </div>
 
             <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 btn-glow text-body font-medium mt-6">
-              {loading ? "Please wait..." : isLogin ? "Log In" : "Sign Up"}
+              {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
             </Button>
           </form>
 
@@ -103,7 +103,7 @@ const Auth = () => {
             <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-small text-muted-foreground hover:text-primary transition-colors">
               {isLogin ? "Need an account? " : "Already have an account? "}
               <span className="font-medium text-primary">
-                {isLogin ? "Sign Up" : "Log In"}
+                {isLogin ? "Sign Up" : "Sign In"}
               </span>
             </button>
           </div>
