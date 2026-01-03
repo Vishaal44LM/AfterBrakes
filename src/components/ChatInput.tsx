@@ -57,6 +57,11 @@ const ChatInput = ({
       };
       
       recognitionRef.current.onerror = (event: any) => {
+        // Ignore aborted errors (happens when user stops recording)
+        if (event.error === 'aborted' || event.error === 'no-speech') {
+          setIsRecording(false);
+          return;
+        }
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
         toast({
