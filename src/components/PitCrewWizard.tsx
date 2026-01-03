@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Wrench,
@@ -22,7 +22,6 @@ import {
   Copy,
   Download,
   X,
-  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +29,6 @@ import { Vehicle } from "@/hooks/useVehicles";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
 import SeverityIndicator from "./SeverityIndicator";
-import ActionSheet from "./ActionSheet";
 
 interface PitCrewWizardProps {
   vehicle: Vehicle | null;
@@ -154,91 +152,7 @@ const PitCrewWizard = ({
   const [showMechanicView, setShowMechanicView] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [showVoiceSheet, setShowVoiceSheet] = useState(false);
-  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
-
-  // Initialize voice recognition
-  useEffect(() => {
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognitionAPI) {
-      recognitionRef.current = new SpeechRecognitionAPI();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-      
-      recognitionRef.current.onresult = (event: any) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          }
-        }
-        if (finalTranscript) {
-          setData(prev => ({ ...prev, description: prev.description + finalTranscript }));
-        }
-      };
-      
-      recognitionRef.current.onerror = (event: any) => {
-        if (event.error === 'aborted' || event.error === 'no-speech') {
-          setIsRecording(false);
-          return;
-        }
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-        toast({
-          title: "Voice input error",
-          description: "Could not process voice input. Please try again.",
-          variant: "destructive"
-        });
-      };
-      
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-    }
-    
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
-  }, [toast]);
-
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      toast({
-        title: "Not supported",
-        description: "Voice input is not supported in this browser.",
-        variant: "destructive"
-      });
-      return;
-    }
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
-  };
-
-  const handleMicClick = () => {
-    setShowVoiceSheet(true);
-    if (!isRecording) {
-      toggleRecording();
-    }
-  };
-
-  const handleCloseVoiceSheet = () => {
-    if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    }
-    setShowVoiceSheet(false);
-  };
 
   // Persist progress to localStorage
   useEffect(() => {
@@ -1196,23 +1110,7 @@ const PitCrewWizard = ({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-foreground">Describe sounds, smells, or vibrations</label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleMicClick}
-                      className={`h-8 px-3 rounded-full transition-all ${
-                        isRecording
-                          ? "bg-primary/20 text-primary"
-                          : "hover:bg-secondary/50 text-muted-foreground"
-                      }`}
-                    >
-                      <Mic className="w-4 h-4 mr-1" />
-                      <span className="text-xs">{isRecording ? "Recording..." : "Voice"}</span>
-                    </Button>
-                  </div>
+                  <label className="text-sm font-medium text-foreground">Describe sounds, smells, or vibrations</label>
                   <Textarea
                     value={data.description}
                     onChange={(e) => setData((prev) => ({ ...prev, description: e.target.value }))}
@@ -1226,53 +1124,6 @@ const PitCrewWizard = ({
           )}
         </div>
       </div>
-
-      {/* Voice Input Action Sheet */}
-      <ActionSheet
-        isOpen={showVoiceSheet}
-        onClose={handleCloseVoiceSheet}
-        title="Voice input"
-      >
-        <div className="flex flex-col items-center gap-6 py-4">
-          {/* Voice waveform */}
-          <div className="flex items-center justify-center gap-3">
-            {isRecording ? (
-              <>
-                <div className="voice-waveform">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <span className="text-sm text-primary font-medium">Listening...</span>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">Tap the mic to start</span>
-            )}
-          </div>
-
-          {/* Mic button */}
-          <Button
-            onClick={toggleRecording}
-            size="icon"
-            className={`h-16 w-16 rounded-full transition-all ${
-              isRecording
-                ? "bg-primary text-primary-foreground mic-recording"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
-            }`}
-          >
-            <Mic className="w-7 h-7" />
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center max-w-xs">
-            {isRecording
-              ? "Speak clearly into your device. Tap the mic again to stop."
-              : "Voice input will be converted to text in the description field."
-            }
-          </p>
-        </div>
-      </ActionSheet>
 
       {/* Footer navigation */}
       <div className="border-t border-border/20 bg-background/95 backdrop-blur-sm p-4">
