@@ -55,6 +55,48 @@ export type Database = {
           },
         ]
       }
+      glovebox_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          email_reminder: boolean | null
+          expiry_date: string | null
+          file_name: string | null
+          file_url: string | null
+          id: string
+          in_app_reminder: boolean | null
+          reminder_email: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          email_reminder?: boolean | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          in_app_reminder?: boolean | null
+          reminder_email?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          email_reminder?: boolean | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          in_app_reminder?: boolean | null
+          reminder_email?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

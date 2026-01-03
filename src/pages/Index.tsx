@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, LogOut } from "lucide-react";
+import { Car, LogOut, FolderOpen } from "lucide-react";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
@@ -8,11 +8,14 @@ import PitCrewCheck from "@/components/PitCrewCheck";
 import PitCrewWizard from "@/components/PitCrewWizard";
 import GuidedDiagnosis from "@/components/GuidedDiagnosis";
 import PitLaneTalk from "@/components/PitLaneTalk";
+import Glovebox from "@/components/Glovebox";
+import GloveboxBanner from "@/components/GloveboxBanner";
+import CarTriviaSnack from "@/components/CarTriviaSnack";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 
-type AppMode = "home" | "wizard" | "guided" | "chat";
+type AppMode = "home" | "wizard" | "guided" | "chat" | "glovebox";
 
 interface GuidedSession {
   symptom: string;
@@ -88,6 +91,10 @@ const Index = () => {
       prefillMessage
     });
     setMode("chat");
+  };
+
+  const handleOpenGlovebox = () => {
+    setMode("glovebox");
   };
 
   const handleBack = () => {
@@ -171,6 +178,15 @@ const Index = () => {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={handleOpenGlovebox}
+                className="btn-glow hover:bg-secondary/50 transition-smooth"
+                title="Glovebox"
+              >
+                <FolderOpen className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={signOut}
                 className="btn-glow hover:bg-secondary/50 transition-smooth"
               >
@@ -180,13 +196,21 @@ const Index = () => {
           </header>
 
           {/* Vehicle pill */}
-          <div className="px-4 mb-4">
+          <div className="px-4 mb-2">
             <GaragePill
               vehicle={activeVehicle}
               onClick={() => setShowGarageSelector(true)}
               className="text-center"
             />
           </div>
+
+          {/* Glovebox banner for expiring documents */}
+          {user && (
+            <GloveboxBanner 
+              userId={user.id} 
+              onView={handleOpenGlovebox} 
+            />
+          )}
         </>
       )}
 
@@ -199,12 +223,17 @@ const Index = () => {
 
       {/* Main content based on mode */}
       {mode === "home" && (
-        <div className="flex-1 flex items-start justify-center pt-4 md:pt-8 overflow-y-auto">
-          <PitCrewCheck
-            onSubmit={handleStartGuidedCheck}
-            disabled={false}
-            onOpenChat={() => handleOpenChat()}
-          />
+        <div className="flex-1 flex flex-col items-center pt-4 md:pt-8 overflow-y-auto">
+          <div className="w-full max-w-2xl mx-auto px-4 space-y-4">
+            <PitCrewCheck
+              onSubmit={handleStartGuidedCheck}
+              disabled={false}
+              onOpenChat={() => handleOpenChat()}
+            />
+
+            {/* Car Trivia Snack - placed after Open Pit Lane button */}
+            <CarTriviaSnack />
+          </div>
         </div>
       )}
 
@@ -243,6 +272,13 @@ const Index = () => {
           onStartGuidedCheck={(symptom) => handleStartGuidedCheck(symptom)}
           onNewChat={handleNewChat}
           prefillMessage={chatSession.prefillMessage}
+        />
+      )}
+
+      {mode === "glovebox" && user && (
+        <Glovebox
+          userId={user.id}
+          onBack={handleBack}
         />
       )}
 
