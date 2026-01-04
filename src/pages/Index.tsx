@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car, LogOut, FolderOpen } from "lucide-react";
+import { LogOut, FolderOpen } from "lucide-react";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
@@ -14,6 +14,7 @@ import CarTriviaSnack from "@/components/CarTriviaSnack";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
+import logo from "@/assets/logo.png";
 
 type AppMode = "home" | "wizard" | "guided" | "chat" | "glovebox";
 
@@ -148,8 +149,7 @@ const Index = () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <Car className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading...</p>
+          <img src={logo} alt="After Brakes" className="w-16 h-16 mx-auto animate-pulse" />
         </div>
       </div>
     );
@@ -168,8 +168,8 @@ const Index = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-primary" />
-              <h1 className="text-base font-semibold text-foreground font-serif">
+              <img src={logo} alt="After Brakes" className="w-8 h-8" />
+              <h1 className="text-base font-semibold text-foreground font-brand hidden sm:block">
                 After Brakes
               </h1>
             </div>

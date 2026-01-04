@@ -315,7 +315,7 @@ const PitLaneTalk = ({
                   <Headphones className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-foreground">Pit Lane Talk</h2>
+                  <h2 className="text-base font-semibold text-foreground font-brand">Pit Lane Talk</h2>
                   <p className="text-sm text-muted-foreground">
                     Quick car advice, just like messaging your pit engineer.
                   </p>
