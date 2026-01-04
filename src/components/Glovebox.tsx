@@ -126,7 +126,7 @@ const Glovebox = ({ userId, onBack }: GloveboxProps) => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Glovebox</h1>
+          <h1 className="text-lg font-semibold text-foreground font-brand">Glovebox</h1>
           <p className="text-xs text-muted-foreground">Your vehicle documents</p>
         </div>
       </header>

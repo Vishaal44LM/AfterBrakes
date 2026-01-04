@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X, Upload, Trash2, Calendar, Bell, Mail, FileText, Image } from "lucide-react";
+import { X, Upload, Trash2, Calendar, Bell, Mail, FileText, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -275,29 +275,41 @@ const GloveboxSheet = ({ userId, documentType, existingDoc, onClose, onSave }: G
             </Label>
 
             {fileName ? (
-              <div className="bg-secondary/30 rounded-xl p-3 flex items-center gap-3">
-                {isImage && fileUrl ? (
-                  <img 
-                    src={fileUrl} 
-                    alt="Document" 
-                    className="w-12 h-12 object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-primary" />
+              <div className="bg-secondary/30 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  {isImage && fileUrl ? (
+                    <img 
+                      src={fileUrl} 
+                      alt="Document" 
+                      className="w-12 h-12 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">{fileName}</p>
+                    <p className="text-xs text-muted-foreground">Tap to replace</p>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">{fileName}</p>
-                  <p className="text-xs text-muted-foreground">Tap to replace</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRemoveFile}
+                    className="shrink-0 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
+                {/* Preview button */}
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRemoveFile}
-                  className="shrink-0 text-destructive hover:text-destructive"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(fileUrl, '_blank')}
+                  className="w-full gap-2"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Eye className="w-4 h-4" />
+                  Preview Document
                 </Button>
               </div>
             ) : (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wrench, ChevronRight, Plus, X, History, Lightbulb } from "lucide-react";
+import { Wrench, ChevronRight, Plus, X, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,7 +14,6 @@ interface PitCrewCheckProps {
 const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitCrewCheckProps) => {
   const [symptom, setSymptom] = useState("");
   const [images, setImages] = useState<string[]>([]);
-  const [showHelper, setShowHelper] = useState(true);
   const { toast } = useToast();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +71,7 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
               <Wrench className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Pit Crew Check</h2>
+              <h2 className="text-lg font-semibold text-foreground font-brand">Pit Crew Check</h2>
               <p className="text-sm text-muted-foreground">Guided diagnosis for any symptom.</p>
             </div>
           </div>
@@ -107,32 +106,6 @@ const PitCrewCheck = ({ onSubmit, disabled, onOpenChat, onViewPastChecks }: PitC
           </span>
         </div>
       </div>
-
-      {/* First-open helper card */}
-      {showHelper && (
-        <div className="bg-card/50 border border-border/30 rounded-2xl p-4 animate-fade-slide-up" style={{ animationDelay: "50ms" }}>
-          <div className="flex items-start gap-3">
-            <Lightbulb className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-foreground mb-2">How Pit Crew Check works</h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">1.</span>
-                  <span>Describe a symptom (noise, vibration, warning light...)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">2.</span>
-                  <span>Get a safety rating for your situation</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary">3.</span>
-                  <span>Follow a mechanic-ready checklist</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Symptom input section */}
       <div className="space-y-2 animate-fade-slide-up" style={{ animationDelay: "100ms" }}>
