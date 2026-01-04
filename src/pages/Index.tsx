@@ -169,7 +169,7 @@ const Index = () => {
 
             <div className="flex items-center gap-2">
               <img src={logo} alt="After Brakes" className="w-8 h-8" />
-              <h1 className="text-base font-semibold text-foreground font-brand hidden sm:block">
+              <h1 className="text-base font-semibold text-foreground font-brand">
                 After Brakes
               </h1>
             </div>

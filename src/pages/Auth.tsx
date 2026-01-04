@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import logo from "@/assets/logo.png";
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -56,8 +56,8 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Logo and title card */}
         <div className="card-vignette p-8 mb-8 text-center">
-          <Car className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h1 className="text-heading text-foreground mb-2 font-serif">After Brakes</h1>
+          <img src={logo} alt="After Brakes" className="w-16 h-16 mx-auto mb-4" />
+          <h1 className="text-heading text-foreground mb-2 font-brand">After Brakes</h1>
           <p className="text-body text-muted-foreground">Pit crew for every drive</p>
         </div>
 
