@@ -68,7 +68,7 @@ const Auth = () => {
               {isLogin ? "Welcome Back" : "Get Started"}
             </h2>
             <p className="text-small text-muted-foreground">
-              {isLogin ? "Sign in to continue" : "Create your account"}
+              {isLogin ? "Log in to continue" : "Create your account"}
             </p>
           </div>
 
@@ -95,7 +95,7 @@ const Auth = () => {
             </div>
 
             <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 btn-glow text-body font-medium mt-6">
-              {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
+              {loading ? "Please wait..." : isLogin ? "Log In" : "Sign Up"}
             </Button>
           </form>
 

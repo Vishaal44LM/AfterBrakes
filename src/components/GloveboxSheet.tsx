@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X, Upload, Trash2, Calendar, Bell, Mail, FileText, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +31,29 @@ const GloveboxSheet = ({ userId, documentType, existingDoc, onClose, onSave }: G
   const [reminderEmail, setReminderEmail] = useState(existingDoc?.reminder_email || "");
   const [fileUrl, setFileUrl] = useState(existingDoc?.file_url || "");
   const [fileName, setFileName] = useState(existingDoc?.file_name || "");
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Get signed URL for private bucket files
+  useEffect(() => {
+    const getSignedUrl = async () => {
+      if (fileUrl && !fileUrl.startsWith('http')) {
+        const { data, error } = await supabase.storage
+          .from("glovebox")
+          .createSignedUrl(fileUrl, 3600); // 1 hour expiry
+        if (data && !error) {
+          setSignedUrl(data.signedUrl);
+        }
+      } else if (fileUrl) {
+        // Legacy: already a full URL
+        setSignedUrl(fileUrl);
+      }
+    };
+    getSignedUrl();
+  }, [fileUrl]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,11 +89,8 @@ const GloveboxSheet = ({ userId, documentType, existingDoc, onClose, onSave }: G
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("glovebox")
-        .getPublicUrl(filePath);
-
-      setFileUrl(urlData.publicUrl);
+      // Store the file path, not public URL (bucket is private)
+      setFileUrl(filePath);
       setFileName(file.name);
 
       toast({
@@ -277,9 +293,9 @@ const GloveboxSheet = ({ userId, documentType, existingDoc, onClose, onSave }: G
             {fileName ? (
               <div className="bg-secondary/30 rounded-xl p-3 space-y-2">
                 <div className="flex items-center gap-3">
-                  {isImage && fileUrl ? (
+                  {isImage && signedUrl ? (
                     <img 
-                      src={fileUrl} 
+                      src={signedUrl} 
                       alt="Document" 
                       className="w-12 h-12 object-cover rounded-lg"
                     />
@@ -305,7 +321,8 @@ const GloveboxSheet = ({ userId, documentType, existingDoc, onClose, onSave }: G
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(fileUrl, '_blank')}
+                  onClick={() => signedUrl && window.open(signedUrl, '_blank')}
+                  disabled={!signedUrl}
                   className="w-full gap-2"
                 >
                   <Eye className="w-4 h-4" />
