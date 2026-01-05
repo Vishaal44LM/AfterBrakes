@@ -324,7 +324,7 @@ const GuidedDiagnosis = ({
           <p className="text-sm text-muted-foreground mb-8">Diagnosing...</p>
 
           {/* Skeleton content */}
-          <div className="w-full max-w-2xl space-y-4 animate-pulse">
+          <div className="w-full max-w-xl space-y-4 animate-pulse">
             {/* Safety badge skeleton */}
             <div className="h-8 w-40 bg-secondary/50 rounded-full skeleton-shimmer" />
             
@@ -414,7 +414,7 @@ const GuidedDiagnosis = ({
 
           {isExpanded && (
             <div className="flex-1 px-4 py-6">
-              <div className="max-w-2xl mx-auto space-y-6">
+              <div className="max-w-xl mx-auto space-y-6">
                 {/* From history indicator */}
                 {fromHistory && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 rounded-full px-3 py-1.5 w-fit">

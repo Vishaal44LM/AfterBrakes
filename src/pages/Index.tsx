@@ -149,7 +149,7 @@ const Index = () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
-          <img src={logo} alt="After Brakes" className="w-16 h-16 mx-auto animate-pulse" />
+          <img src={logo} alt="After Brakes" className="w-24 h-24 mx-auto animate-pulse" />
         </div>
       </div>
     );

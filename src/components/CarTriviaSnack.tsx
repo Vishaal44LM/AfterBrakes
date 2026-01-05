@@ -68,7 +68,7 @@ const CarTriviaSnack = () => {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-primary" />
         <span className="text-xs font-medium text-primary uppercase tracking-wide">
-          Car Trivia Snack
+          Drive Time Q&A
         </span>
       </div>
 
