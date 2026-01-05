@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { X, Copy, Share2, Check, Sparkles } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { X, Copy, Share2, Check, Sparkles, Lightbulb, ArrowRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -30,88 +30,103 @@ const CrewsTakeSheet = ({ isOpen, onClose, messages, hasUpdates }: CrewsTakeShee
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Memoize summary generation for performance
+  const summary = useMemo(() => {
+    if (!isOpen || messages.length === 0) return { mainTopic: "", keyPoints: [], actionItems: [], importantWarnings: [] };
 
-  // Generate summary from conversation
-  const generateSummary = () => {
     const userMessages = messages.filter((m) => m.role === "user");
     const assistantMessages = messages.filter((m) => m.role === "assistant");
 
-    // What you asked - summarize user questions
-    const whatYouAsked = userMessages.slice(0, 3).map((msg) => {
-      const content = msg.content.length > 80 ? msg.content.slice(0, 80) + "..." : msg.content;
-      return content;
-    });
+    // Extract main topic from first user message
+    const firstUserMsg = userMessages[0]?.content || "";
+    const mainTopic = firstUserMsg.length > 100 ? firstUserMsg.slice(0, 100) + "..." : firstUserMsg;
 
-    // What the crew suggests - extract key points from assistant responses
-    const suggestions: string[] = [];
+    // Extract key points from assistant responses
+    const keyPoints: string[] = [];
+    const actionItems: string[] = [];
+    const importantWarnings: string[] = [];
+
     assistantMessages.forEach((msg) => {
-      const lines = msg.content.split("\n").filter((l) => l.trim());
-      lines.forEach((line) => {
-        if (line.includes("recommend") || line.includes("suggest") || line.includes("should") || line.includes("check")) {
-          const clean = line.replace(/^[•\-*]\s*/, "").trim();
-          if (clean.length > 10 && clean.length < 100 && suggestions.length < 5) {
-            suggestions.push(clean);
+      const content = msg.content;
+      const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 15);
+
+      sentences.forEach((sentence) => {
+        const clean = sentence.replace(/^[•\-*\d.)\s]+/, "").trim();
+        if (clean.length < 15 || clean.length > 150) return;
+
+        // Categorize sentences
+        const lower = clean.toLowerCase();
+        
+        // Warnings/cautions
+        if (lower.includes("warning") || lower.includes("caution") || lower.includes("danger") || 
+            lower.includes("don't drive") || lower.includes("stop driving") || lower.includes("immediately")) {
+          if (importantWarnings.length < 2 && !importantWarnings.some(w => w.toLowerCase().includes(clean.toLowerCase().slice(0, 30)))) {
+            importantWarnings.push(clean);
+          }
+        }
+        // Action items
+        else if (lower.includes("should") || lower.includes("recommend") || lower.includes("need to") || 
+                 lower.includes("check") || lower.includes("replace") || lower.includes("inspect") ||
+                 lower.includes("visit") || lower.includes("get")) {
+          if (actionItems.length < 4 && !actionItems.some(a => a.toLowerCase().includes(clean.toLowerCase().slice(0, 30)))) {
+            actionItems.push(clean);
+          }
+        }
+        // Key points
+        else if (lower.includes("because") || lower.includes("caused by") || lower.includes("likely") ||
+                 lower.includes("usually") || lower.includes("common") || lower.includes("means")) {
+          if (keyPoints.length < 3 && !keyPoints.some(k => k.toLowerCase().includes(clean.toLowerCase().slice(0, 30)))) {
+            keyPoints.push(clean);
           }
         }
       });
     });
 
-    // Fallback suggestions
-    if (suggestions.length === 0) {
-      const lastAssistant = assistantMessages[assistantMessages.length - 1];
-      if (lastAssistant) {
-        const sentences = lastAssistant.content.split(/[.!?]/).filter((s) => s.trim().length > 20);
-        sentences.slice(0, 3).forEach((s) => {
-          suggestions.push(s.trim());
-        });
-      }
+    // Fallback if no key points found
+    if (keyPoints.length === 0 && assistantMessages.length > 0) {
+      const lastMsg = assistantMessages[assistantMessages.length - 1].content;
+      const sentences = lastMsg.split(/[.!?]+/).filter((s) => s.trim().length > 20 && s.trim().length < 150);
+      sentences.slice(0, 2).forEach((s) => {
+        keyPoints.push(s.trim());
+      });
     }
 
-    // Next steps
-    const nextSteps: string[] = [];
-    const lastAssistant = assistantMessages[assistantMessages.length - 1];
-    if (lastAssistant) {
-      if (lastAssistant.content.toLowerCase().includes("mechanic")) {
-        nextSteps.push("Consider visiting a mechanic for a professional inspection");
-      }
-      if (lastAssistant.content.toLowerCase().includes("check") || lastAssistant.content.toLowerCase().includes("inspect")) {
-        nextSteps.push("Perform visual inspection of the mentioned components");
-      }
-      if (lastAssistant.content.toLowerCase().includes("monitor") || lastAssistant.content.toLowerCase().includes("watch")) {
-        nextSteps.push("Monitor for any changes or worsening symptoms");
-      }
+    // Fallback action items
+    if (actionItems.length === 0) {
+      actionItems.push("Review the full conversation for specific recommendations");
     }
 
-    if (nextSteps.length === 0) {
-      nextSteps.push("Review the conversation for specific recommendations");
-    }
+    return { mainTopic, keyPoints, actionItems, importantWarnings };
+  }, [isOpen, messages]);
 
-    return { whatYouAsked, suggestions, nextSteps };
-  };
-
-  const summary = generateSummary();
+  if (!isOpen) return null;
 
   const generateTextSummary = () => {
-    let text = "CREW'S TAKE\n";
-    text += "Quick summary of this chat\n";
-    text += "─".repeat(30) + "\n\n";
+    let text = "CREW'S TAKE - Chat Summary\n";
+    text += "─".repeat(35) + "\n\n";
 
-    text += "WHAT YOU ASKED:\n";
-    summary.whatYouAsked.forEach((q) => {
-      text += `• ${q}\n`;
-    });
-    text += "\n";
+    text += "YOUR QUESTION:\n";
+    text += `${summary.mainTopic}\n\n`;
 
-    text += "WHAT THE CREW SUGGESTS:\n";
-    summary.suggestions.forEach((s) => {
-      text += `• ${s}\n`;
-    });
-    text += "\n";
+    if (summary.importantWarnings.length > 0) {
+      text += "⚠️ IMPORTANT WARNINGS:\n";
+      summary.importantWarnings.forEach((w) => {
+        text += `• ${w}\n`;
+      });
+      text += "\n";
+    }
 
-    text += "NEXT STEPS:\n";
-    summary.nextSteps.forEach((step, i) => {
-      text += `${i + 1}. ${step}\n`;
+    if (summary.keyPoints.length > 0) {
+      text += "KEY INSIGHTS:\n";
+      summary.keyPoints.forEach((p) => {
+        text += `• ${p}\n`;
+      });
+      text += "\n";
+    }
+
+    text += "RECOMMENDED ACTIONS:\n";
+    summary.actionItems.forEach((item, i) => {
+      text += `${i + 1}. ${item}\n`;
     });
 
     return text;
@@ -131,8 +146,7 @@ const CrewsTakeSheet = ({ isOpen, onClose, messages, hasUpdates }: CrewsTakeShee
           title: "Crew's Take",
           text: generateTextSummary(),
         });
-      } catch (error) {
-        // User cancelled or share failed
+      } catch {
         handleCopy();
       }
     } else {
@@ -150,7 +164,7 @@ const CrewsTakeSheet = ({ isOpen, onClose, messages, hasUpdates }: CrewsTakeShee
 
       {/* Sheet */}
       <div
-        className="relative w-full max-w-lg bg-card rounded-t-3xl shadow-xl animate-action-sheet-up max-h-[80vh] flex flex-col"
+        className="relative w-full max-w-lg bg-card rounded-t-3xl shadow-xl animate-action-sheet-up max-h-[85vh] flex flex-col"
         style={{
           boxShadow: "0 -10px 40px hsl(0 0% 0% / 0.5), var(--shadow-glow)",
         }}
@@ -161,7 +175,7 @@ const CrewsTakeSheet = ({ isOpen, onClose, messages, hasUpdates }: CrewsTakeShee
             <Sparkles className="w-5 h-5 text-primary" />
             <div>
               <h3 className="text-lg font-semibold text-foreground">Crew's Take</h3>
-              <p className="text-xs text-muted-foreground">Quick summary of this chat so far</p>
+              <p className="text-xs text-muted-foreground">Your conversation at a glance</p>
             </div>
           </div>
           <Button
@@ -176,40 +190,64 @@ const CrewsTakeSheet = ({ isOpen, onClose, messages, hasUpdates }: CrewsTakeShee
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
-          {/* What you asked */}
-          <div>
-            <h4 className="text-sm font-medium text-foreground mb-2">What you asked</h4>
-            <ul className="space-y-1.5">
-              {summary.whatYouAsked.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-primary shrink-0">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+          {/* Your Question */}
+          <div className="bg-secondary/20 rounded-xl p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-medium text-foreground">Your question</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">{summary.mainTopic || "No question yet"}</p>
           </div>
 
-          {/* What the crew suggests */}
-          <div>
-            <h4 className="text-sm font-medium text-foreground mb-2">What the crew suggests</h4>
-            <ul className="space-y-1.5">
-              {summary.suggestions.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-primary shrink-0">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Important Warnings */}
+          {summary.importantWarnings.length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3">
+              <h4 className="text-sm font-medium text-destructive mb-2 flex items-center gap-2">
+                <span className="text-destructive">⚠️</span>
+                Important
+              </h4>
+              <ul className="space-y-1.5">
+                {summary.importantWarnings.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-destructive/90">
+                    <span className="shrink-0">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          {/* Next steps */}
+          {/* Key Insights */}
+          {summary.keyPoints.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-primary" />
+                Key insights
+              </h4>
+              <ul className="space-y-2">
+                {summary.keyPoints.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground bg-secondary/20 rounded-lg p-2">
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommended Actions */}
           <div>
-            <h4 className="text-sm font-medium text-foreground mb-2">Next steps</h4>
-            <ol className="space-y-1.5">
-              {summary.nextSteps.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-primary font-medium shrink-0">{i + 1}.</span>
-                  <span>{item}</span>
+            <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <ArrowRight className="w-4 h-4 text-primary" />
+              Recommended actions
+            </h4>
+            <ol className="space-y-2">
+              {summary.actionItems.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <span className="text-primary font-semibold shrink-0 bg-primary/20 rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                    {i + 1}
+                  </span>
+                  <span className="text-foreground">{item}</span>
                 </li>
               ))}
             </ol>
