@@ -11,7 +11,7 @@ import PitLaneTalk from "@/components/PitLaneTalk";
 import Glovebox from "@/components/Glovebox";
 import GloveboxBanner from "@/components/GloveboxBanner";
 import CarTriviaSnack from "@/components/CarTriviaSnack";
-import F1LightsOutGame from "@/components/F1LightsOutGame";
+import LightsOutCard from "@/components/LightsOutCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
@@ -232,10 +232,10 @@ const Index = () => {
               onOpenChat={() => handleOpenChat()}
             />
 
-            {/* F1 Lights Out Reaction Game */}
-            <F1LightsOutGame />
+            {/* Lights Out Game Card */}
+            <LightsOutCard />
 
-            {/* Car Trivia Snack - placed after Open Pit Lane button */}
+            {/* Drive Time Q&A */}
             <CarTriviaSnack />
           </div>
         </div>
