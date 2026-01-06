@@ -7,8 +7,8 @@ const LightsOutCard = () => {
   return (
     <div
       onClick={() => navigate("/lights-out")}
-      className="card-vignette p-4 cursor-pointer hover:bg-secondary/40 transition-colors animate-fade-slide-up group"
-      style={{ animationDelay: "150ms" }}
+      className="card-vignette p-3.5 cursor-pointer hover:bg-secondary/40 transition-colors animate-fade-slide-up group"
+      style={{ animationDelay: "50ms" }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

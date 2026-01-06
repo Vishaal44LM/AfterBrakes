@@ -63,7 +63,7 @@ const CarTriviaSnack = () => {
   };
 
   return (
-    <div className="card-vignette p-4 animate-fade-slide-up" style={{ animationDelay: "200ms" }}>
+    <div className="card-vignette p-3.5 animate-fade-slide-up" style={{ animationDelay: "100ms" }}>
       {/* Label */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-primary" />
