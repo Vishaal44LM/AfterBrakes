@@ -171,7 +171,7 @@ const F1LightsOutGame = () => {
       {/* Header */}
       <div className="text-center mb-4">
         <h3 className="text-label text-muted-foreground tracking-widest mb-1">
-          F1 LIGHTS OUT
+          LIGHTS OUT
         </h3>
         <p className="text-xs text-muted-foreground/70">
           Test your reaction time
