@@ -11,7 +11,22 @@ serve(async (req) => {
   }
 
   try {
-    const { symptom, images, vehicle } = await req.json();
+    const {
+      vehicle,
+      mileage,
+      usagePattern,
+      lastServiceDate,
+      lastServiceMileage,
+      avgDailyDistance,
+      drivingStyle,
+      roadCondition,
+      loadPattern,
+      symptoms,
+      additionalNotes,
+      inputScore,
+      inputStrength,
+    } = await req.json();
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -21,94 +36,101 @@ serve(async (req) => {
       );
     }
 
+    // Reject weak input strength
+    if (inputScore < 70) {
+      return new Response(
+        JSON.stringify({ error: "Input strength too low. Please complete more details." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build vehicle context
     const vehicleContext = vehicle
-      ? `Vehicle: ${vehicle.manufacturer} ${vehicle.model} (${vehicle.year}), Fuel: ${vehicle.fuel || 'petrol'}.`
-      : "Vehicle: Not specified.";
+      ? `Vehicle: ${vehicle.manufacturer} ${vehicle.model} (${vehicle.year}), Fuel: ${vehicle.fuel || 'petrol'}, Mileage: ${mileage} km.`
+      : `Vehicle: Not specified, Mileage: ${mileage} km.`;
 
-    const systemPrompt = `You are the After Brakes automotive assistant, branded as "Pit crew for every drive."
+    // Build usage context
+    const usageContext = `
+Driving Pattern: ${usagePattern} driving
+Average Daily Distance: ${avgDailyDistance} km
+Driving Style: ${drivingStyle}
+Road Conditions: ${roadCondition}
+Typical Load: ${loadPattern}
+Last Service: ${lastServiceDate ? `Date: ${lastServiceDate}` : `At ${lastServiceMileage} km`}`;
 
-Your primary job is the Guided Diagnosis flow:
-User describes a problem → You create a mechanic-style checklist → You give a safety rating + summary for the mechanic.
+    // Build symptoms context
+    const symptomsContext = symptoms && symptoms.length > 0
+      ? `Reported Symptoms:\n${symptoms.map((s: any) => 
+          `- ${s.label}: ${s.frequency} frequency, ${s.severity} severity, occurs during: ${s.conditions.join(', ') || 'various conditions'}`
+        ).join('\n')}`
+      : "No specific symptoms reported.";
 
-CRITICAL FORMATTING RULES:
-- NEVER use asterisks (*) or markdown bold formatting
-- Use plain text only
-- Use bullet points with "•" character for lists
-- Use numbered lists like "1." "2." etc for steps
-- Keep text clean, readable, and well-spaced
+    const systemPrompt = `You are the Pit Crew Check AI - a professional automotive risk prediction engine for After Brakes.
 
-CRITICAL OUTPUT FORMAT - You MUST follow this exact structure:
+CORE PRINCIPLE:
+You predict FUTURE vehicle failure risks, not current diagnoses. Think like a race engineer briefing before a race - disciplined, data-driven, preventive.
 
-1. TITLE LINE (plain sentence)
-Example: Guided check for smoke from your engine bay.
+3-LAYER PREDICTION ENGINE:
 
-2. SAFETY BADGE LINE (MANDATORY - pick exactly one)
-"Safety level: Safe to drive." - if the issue is minor
-"Safety level: Drive with caution." - if there's a potential issue needing attention
-"Safety level: Do not drive." - if there's a serious safety concern
-Follow with one short reason (max 1 sentence).
+LAYER 1 - VEHICLE INTELLIGENCE (Static Knowledge):
+- Known failure patterns for this specific make/model/year
+- Common weak components for this vehicle
+- Mileage-based wear expectations
+- India-centric assumptions (climate, road quality, fuel quality)
 
-3. SHORT INTRO (max 2 lines)
-Explain what the checklist will do and remind about safety.
-Example: Here's a quick checklist to capture the right details before you speak to a mechanic. Only do what feels safe.
+LAYER 2 - USER REALITY (Dynamic Weighting):
+- Driving behavior (${drivingStyle} style affects component wear)
+- Maintenance discipline (service interval adherence)
+- Road conditions (${roadCondition} roads accelerate suspension/tire wear)
+- Load patterns (${loadPattern} affects drivetrain stress)
+- Current symptoms as early warning indicators
 
-4. STEP-BY-STEP CHECKLIST (4-7 numbered steps)
-Each step must have:
-• A short step title (no asterisks, no bold markers)
-• 1-3 bullet points with clear actions or observations
+LAYER 3 - PREDICTIVE ANALYSIS:
+- Cross-reference symptoms with known failure progressions
+- Calculate probability based on mileage + behavior + symptoms
+- Estimate time/distance windows for risk escalation
 
-Steps must progress from simple to slightly deeper:
-• Safety & environment first
-• Basic visual / sound / smell checks
-• Simple interactions (no tools, no jacking, no disassembly)
-• Optional photo/video capture
-• Workshop-prep step
+CRITICAL OUTPUT FORMAT - You MUST return EXACTLY this structured format:
 
-Format each step as:
-1. Step Title
-   • First action or observation
-   • Second action if needed
-   • Third action if needed
+For EACH component at risk (provide 3-6 predictions), use this exact format:
 
-5. LIKELY AREAS (not a hard diagnosis)
-2-3 bullets using "•" character: "Likely area: ..." / "Also possible: ..."
-Never claim certainty; always phrase as "likely" or "possible."
+---
+Component: [Component Name]
+Risk Level: [High/Medium/Low]
+Confidence: [50-95]%
+Time Window: [e.g., "Within 3,000-5,000 km" or "Within 1-2 months"]
+Action: [Specific preventive action in one sentence]
+Can Wait: [Yes/No]
+Reason: [One sentence explaining why this component is at risk based on the data]
+---
 
-6. SUMMARY FOR MECHANIC
-A text block the user can show a workshop:
-• Context (when it happens)
-• Key symptoms
-• Checks the user has done / will do
-• Any risk note (Advised not to drive until inspected.)
+PREDICTION RULES:
 
-SAFETY RULES:
-• NEVER ask the user to: jack the car, remove wheels, touch hot engine parts, open pressurized coolant, probe electrical systems, or drive if you've said "Do not drive."
-• Prefer commands starting with verbs: Park, Look, Listen, Smell, Note, Record, Tell your mechanic.
+1. NEVER say "Will fail" - use "Risk increasing" or "Failure risk elevated"
+2. Only predict if confidence > 50%
+3. High Risk = Safety-critical OR confidence > 80% with severe symptoms
+4. Medium Risk = Notable wear pattern OR moderate symptoms
+5. Low Risk = Preventive monitoring recommended
 
-SAFETY BADGE LOGIC:
-Do not drive (err on the safe side):
-• Brake pedal going to the floor, brakes not biting, loud grinding while braking
-• Steering that pulls hard, sudden loss of control feel
-• Heavy smoke from engine bay, fuel smell, burning electrical smell, visible flames
-• Engine overheating warning, coolant boiling, oil pressure warning, severe knocking
+RISK ASSESSMENT PRIORITIES (India-centric):
+- Brake system: Heavy traffic = more brake wear
+- Suspension: Rough roads = accelerated bushing/shock wear
+- Clutch: City driving + aggressive style = faster clutch wear
+- Battery: Extreme heat + frequent short trips = reduced life
+- Cooling system: High ambient temps + traffic = radiator/thermostat stress
+- Tires: Road quality + load = uneven wear patterns
 
-Drive with caution:
-• Mild but repeatable noises, vibrations, warning lights without obvious danger, reduced power without extreme symptoms
+INPUT CONTEXT:
+${vehicleContext}
+${usageContext}
 
-Safe to drive:
-• Minor, non-safety-critical issues like small rattles in interior trim, infotainment glitches, known non-critical warnings
+${symptomsContext}
 
-${vehicleContext}`;
+${additionalNotes ? `Additional Notes: ${additionalNotes}` : ''}
 
-    const userContent = images && images.length > 0
-      ? [
-          { type: "text", text: `User symptom: ${symptom}` },
-          ...images.map((img: string) => ({
-            type: "image_url",
-            image_url: { url: img },
-          })),
-        ]
-      : `User symptom: ${symptom}`;
+Input Strength Score: ${inputScore}/100 (${inputStrength})
+
+Based on all this data, provide your failure risk predictions. Be specific, professional, and preventive-focused. Always include at least 3 component predictions even if input has no symptoms (use baseline wear predictions for the vehicle/mileage).`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -120,7 +142,7 @@ ${vehicleContext}`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
+          { role: "user", content: "Generate the failure risk timeline predictions based on the provided vehicle and usage data." },
         ],
         stream: true,
       }),
