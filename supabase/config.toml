@@ -6,5 +6,8 @@ verify_jwt = false
 [functions.pit-crew-check]
 verify_jwt = false
 
+[functions.pit-crew-predict]
+verify_jwt = false
+
 [functions.glovebox-reminders]
 verify_jwt = false

@@ -77,8 +77,17 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
     if (!assistantMsg) return "pitLane";
     
     const content = assistantMsg.content?.toLowerCase() || "";
-    const isPitCrewCheck = content.includes("safety level:") && 
-           (content.includes("step") || content.includes("1.") || content.includes("checklist"));
+    
+    // Check for new Pit Crew Check format (JSON with type field)
+    if (content.includes('"type":"pit-crew-check"') || content.includes('"type": "pit-crew-check"')) {
+      return "pitCrew";
+    }
+    
+    // Legacy format detection
+    const isPitCrewCheck = (content.includes("safety level:") && 
+           (content.includes("step") || content.includes("1.") || content.includes("checklist"))) ||
+           content.includes("risk level:") ||
+           content.includes("failure risk");
     
     return isPitCrewCheck ? "pitCrew" : "pitLane";
   };
