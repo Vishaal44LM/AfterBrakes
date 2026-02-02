@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Clock, Car, FolderOpen } from "lucide-react";
+import { LogOut, Car, FolderOpen } from "lucide-react";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
-import PitCrewCheck from "@/components/PitCrewCheck";
-import PitCrewWizard from "@/components/PitCrewWizard";
-import GuidedDiagnosis from "@/components/GuidedDiagnosis";
+import PitCrewCheckCard from "@/components/pitcrew/PitCrewCheckCard";
+import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
 import PitLaneTalk from "@/components/PitLaneTalk";
 import Glovebox from "@/components/Glovebox";
 import GloveboxBanner from "@/components/GloveboxBanner";
@@ -17,15 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import logo from "@/assets/logo.png";
 
-type AppMode = "home" | "wizard" | "guided" | "chat" | "glovebox";
-
-interface GuidedSession {
-  symptom: string;
-  images: string[];
-  fromHistory?: boolean;
-  historyMessages?: any[];
-  chatId?: string;
-}
+type AppMode = "home" | "pitcrew" | "chat" | "glovebox";
 
 interface ChatSession {
   messages: any[];
@@ -38,7 +29,6 @@ const Index = () => {
   const [showGarageSelector, setShowGarageSelector] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
   const [vehicleToast, setVehicleToast] = useState<string | null>(null);
-  const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession>({
     messages: [],
     chatId: null,
@@ -72,19 +62,8 @@ const Index = () => {
     setVehicleToast(`Now diagnosing: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year}`);
   };
 
-  const handleStartWizard = () => {
-    setMode("wizard");
-  };
-
-  const handleStartGuidedCheck = (symptom: string, images: string[] = []) => {
-    if (symptom.trim() || images.length > 0) {
-      setGuidedSession({
-        symptom,
-        images,
-        fromHistory: false
-      });
-      setMode("guided");
-    }
+  const handleStartPitCrewCheck = () => {
+    setMode("pitcrew");
   };
 
   const handleOpenChat = (prefillMessage?: string) => {
@@ -102,17 +81,11 @@ const Index = () => {
 
   const handleBack = () => {
     setMode("home");
-    setGuidedSession(null);
     setChatSession({
       messages: [],
       chatId: null,
       prefillMessage: undefined
     });
-  };
-
-  const handleStartNewCheck = () => {
-    setGuidedSession(null);
-    setMode("home");
   };
 
   // Load chat from history - opens Pit Lane Talk with existing messages
@@ -124,19 +97,14 @@ const Index = () => {
     setMode("chat");
   };
 
-  // Load check from history - opens Pit Crew Check (Guided Diagnosis) with existing data
+  // Load check from history - for now just show in chat
   const handleLoadCheck = (loadedMessages: any[], chatId: string) => {
-    const userMessage = loadedMessages.find(m => m.role === "user");
-    const symptom = userMessage?.content || "";
-    
-    setGuidedSession({
-      symptom,
-      images: userMessage?.images || [],
-      fromHistory: true,
-      historyMessages: loadedMessages,
+    // Parse the stored data and show in chat mode for now
+    setChatSession({
+      messages: loadedMessages,
       chatId
     });
-    setMode("guided");
+    setMode("chat");
   };
 
   const handleNewChat = () => {
@@ -234,13 +202,20 @@ const Index = () => {
         <div className="flex-1 flex flex-col items-center pt-2 md:pt-6 overflow-y-auto pb-8">
           <div className="w-full max-w-2xl mx-auto px-4 space-y-6">
             
-            {/* CORE ZONE: Pit Crew Check + Input */}
+            {/* CORE ZONE: Pit Crew Check Card */}
             <div className="space-y-4">
-              <PitCrewCheck
-                onSubmit={handleStartGuidedCheck}
-                disabled={false}
-                onOpenChat={() => handleOpenChat()}
-              />
+              <PitCrewCheckCard onStart={handleStartPitCrewCheck} />
+              
+              {/* Pit Lane Talk link */}
+              <div className="flex items-center justify-center py-2 animate-fade-slide-up" style={{ animationDelay: "100ms" }}>
+                <span className="text-sm text-muted-foreground">Just have a quick question?</span>
+                <button
+                  onClick={() => handleOpenChat()}
+                  className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                >
+                  Open Pit Lane Talk →
+                </button>
+              </div>
             </div>
 
             {/* UTILITY ZONE: Glovebox */}
@@ -282,28 +257,13 @@ const Index = () => {
         </div>
       )}
 
-      {mode === "wizard" && user && (
-        <PitCrewWizard
+      {mode === "pitcrew" && user && (
+        <PitCrewCheckWizard
           vehicle={activeVehicle}
           userId={user.id}
           onBack={handleBack}
           onOpenChat={handleOpenChat}
           onComplete={handleBack}
-        />
-      )}
-
-      {mode === "guided" && guidedSession && user && (
-        <GuidedDiagnosis
-          symptom={guidedSession.symptom}
-          images={guidedSession.images}
-          vehicle={activeVehicle}
-          userId={user.id}
-          onBack={handleBack}
-          onOpenChat={() => handleOpenChat()}
-          onStartNewCheck={handleStartNewCheck}
-          fromHistory={guidedSession.fromHistory}
-          historyMessages={guidedSession.historyMessages}
-          chatId={guidedSession.chatId}
         />
       )}
 
@@ -314,7 +274,9 @@ const Index = () => {
           initialMessages={chatSession.messages}
           chatId={chatSession.chatId}
           onBack={handleBack}
-          onStartGuidedCheck={(symptom) => handleStartGuidedCheck(symptom)}
+          onStartGuidedCheck={() => {
+            setMode("pitcrew");
+          }}
           onNewChat={handleNewChat}
           prefillMessage={chatSession.prefillMessage}
         />
