@@ -93,7 +93,7 @@ const FailureTimeline = ({ risks, inputStrength }: FailureTimelineProps) => {
               <div className="flex items-center gap-3">
                 {getRiskIcon(risk.riskLevel)}
                 <div>
-                  <h4 className="font-medium text-foreground">{risk.component}</h4>
+                  <h4 className="font-medium text-foreground">{risk.component.replace(/\*+/g, '').trim()}</h4>
                   <p className="text-xs text-muted-foreground capitalize">
                     {risk.riskLevel} risk • {risk.confidence}% confidence
                   </p>
