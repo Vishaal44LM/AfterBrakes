@@ -87,7 +87,7 @@ const VehicleInputStep = ({ data, vehicle, onChange }: VehicleInputStepProps) =>
         <Label className="text-sm font-medium">
           Last service <span className="text-destructive">*</span>
         </Label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="serviceDate" className="text-xs text-muted-foreground">
               Date (approximate)
@@ -100,9 +100,14 @@ const VehicleInputStep = ({ data, vehicle, onChange }: VehicleInputStepProps) =>
               className="bg-secondary/30 border-border/30"
             />
           </div>
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px bg-border/30" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <div className="flex-1 h-px bg-border/30" />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="serviceMileage" className="text-xs text-muted-foreground">
-              OR mileage at service
+              Mileage at last service (km)
             </Label>
             <Input
               id="serviceMileage"

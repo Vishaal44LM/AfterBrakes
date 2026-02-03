@@ -505,9 +505,6 @@ ${symptomData.additionalNotes ? `Additional Notes: ${symptomData.additionalNotes
 
             {/* Action buttons */}
             <div className="flex flex-col gap-3 pt-4">
-              <Button onClick={handleAskFollowUp} className="w-full btn-glow">
-                Ask follow-up questions
-              </Button>
               <Button variant="outline" onClick={handleStartNew} className="w-full">
                 Start new check
               </Button>

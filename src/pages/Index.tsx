@@ -6,6 +6,7 @@ import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
 import PitCrewCheckCard from "@/components/pitcrew/PitCrewCheckCard";
 import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
+import PitCrewHistoryResults from "@/components/pitcrew/PitCrewHistoryResults";
 import PitLaneTalk from "@/components/PitLaneTalk";
 import CarTriviaSnack from "@/components/CarTriviaSnack";
 import LightsOutCard from "@/components/LightsOutCard";
@@ -14,12 +15,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import logo from "@/assets/logo.png";
 
-type AppMode = "home" | "pitcrew" | "chat";
+type AppMode = "home" | "pitcrew" | "pitcrew-results" | "chat";
 
 interface ChatSession {
   messages: any[];
   chatId: string | null;
   prefillMessage?: string;
+}
+
+interface PitCrewHistoryResult {
+  risks: any[];
+  inputStrength: number;
+  overallAssessment: string;
 }
 
 const Index = () => {
@@ -32,6 +39,7 @@ const Index = () => {
     chatId: null,
     prefillMessage: undefined
   });
+  const [pitCrewHistory, setPitCrewHistory] = useState<PitCrewHistoryResult | null>(null);
 
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -80,6 +88,7 @@ const Index = () => {
       chatId: null,
       prefillMessage: undefined
     });
+    setPitCrewHistory(null);
   };
 
   // Load chat from history - opens Pit Lane Talk with existing messages
@@ -91,12 +100,28 @@ const Index = () => {
     setMode("chat");
   };
 
-  // Load check from history - for now just show in chat
+  // Load check from history - parse and show results view
   const handleLoadCheck = (loadedMessages: any[], chatId: string) => {
-    setChatSession({
-      messages: loadedMessages,
-      chatId
-    });
+    // Parse the pit crew check result from stored messages
+    const assistantMsg = loadedMessages.find((m: any) => m.role === "assistant");
+    if (assistantMsg?.content) {
+      try {
+        const data = JSON.parse(assistantMsg.content);
+        if (data.type === "pit-crew-check" && data.risks) {
+          setPitCrewHistory({
+            risks: data.risks,
+            inputStrength: data.inputStrength || 70,
+            overallAssessment: data.overallAssessment || "Risk analysis from history"
+          });
+          setMode("pitcrew-results");
+          return;
+        }
+      } catch {
+        // Not JSON, fallback to chat
+      }
+    }
+    // Fallback to chat mode
+    setChatSession({ messages: loadedMessages, chatId });
     setMode("chat");
   };
 
@@ -246,7 +271,15 @@ const Index = () => {
         />
       )}
 
-      <div className="seam-line absolute bottom-0 left-0 right-0" />
+      {mode === "pitcrew-results" && pitCrewHistory && (
+        <PitCrewHistoryResults
+          risks={pitCrewHistory.risks}
+          inputStrength={pitCrewHistory.inputStrength}
+          overallAssessment={pitCrewHistory.overallAssessment}
+          onBack={handleBack}
+          onStartNew={handleStartPitCrewCheck}
+        />
+      )}
 
       {/* Modals */}
       {showGarageSelector && user && (
