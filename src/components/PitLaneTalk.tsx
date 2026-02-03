@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Car, MessageSquarePlus, Sparkles, Headphones } from "lucide-react";
+import { ArrowLeft, Car, MessageSquarePlus, Sparkles, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import CrewsTakeSheet from "./CrewsTakeSheet";
 import { useToast } from "@/components/ui/use-toast";
@@ -29,8 +28,19 @@ const suggestionChips = [
   { label: "Service interval", query: "What's the recommended service interval for my car?" },
   { label: "Tyre pressure", query: "What should my tyre pressure be?" },
   { label: "Best engine oil", query: "What's the best engine oil for my vehicle?" },
-  { label: "Buying a used car", query: "What should I check when buying a used car?" },
+  { label: "Buying tips", query: "What should I check when buying a used car?" },
 ];
+
+// Clean markdown formatting
+const cleanMarkdown = (text: string): string => {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/\*/g, "")
+    .trim();
+};
 
 const PitLaneTalk = ({
   vehicle,
@@ -48,6 +58,7 @@ const PitLaneTalk = ({
   const [showCrewsTake, setShowCrewsTake] = useState(false);
   const [hasCrewsTakeUpdate, setHasCrewsTakeUpdate] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -58,21 +69,18 @@ const PitLaneTalk = ({
     scrollToBottom();
   }, [messages]);
 
-  // Handle prefill message
   useEffect(() => {
     if (prefillMessage && messages.length === 0) {
       handleSend(prefillMessage, []);
     }
   }, [prefillMessage]);
 
-  // Update messages when initialMessages change (e.g., loading from history)
   useEffect(() => {
     if (initialMessages.length > 0) {
       setMessages(initialMessages);
     }
   }, [initialMessages]);
 
-  // Update chatId when prop changes
   useEffect(() => {
     setCurrentChatId(chatId);
   }, [chatId]);
@@ -262,21 +270,89 @@ const PitLaneTalk = ({
 
   const isEmpty = messages.length === 0;
 
+  // Render message content with line-by-line animation
+  const renderMessageContent = (content: string, isAssistant: boolean) => {
+    const cleanContent = cleanMarkdown(content);
+    const paragraphs = cleanContent.split('\n\n').filter(p => p.trim());
+
+    return (
+      <div className="space-y-3">
+        {paragraphs.map((paragraph, idx) => {
+          // Numbered list
+          if (/^\d+\./.test(paragraph)) {
+            const items = paragraph.split('\n').filter(line => /^\d+\./.test(line));
+            return (
+              <ol key={idx} className="space-y-2">
+                {items.map((item, i) => (
+                  <li 
+                    key={i} 
+                    className={`flex gap-3 ${isAssistant ? 'animate-fade-slide-up' : ''}`}
+                    style={isAssistant ? { animationDelay: `${(idx * items.length + i) * 50}ms` } : undefined}
+                  >
+                    <span className="text-primary font-medium shrink-0 w-5">
+                      {item.match(/^\d+/)?.[0]}.
+                    </span>
+                    <span className="text-foreground/90 leading-relaxed">
+                      {cleanMarkdown(item.replace(/^\d+\.\s*/, ''))}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            );
+          }
+          // Bullet list
+          else if (/^[-•]/.test(paragraph)) {
+            const items = paragraph.split('\n').filter(line => /^[-•]/.test(line));
+            return (
+              <ul key={idx} className="space-y-2">
+                {items.map((item, i) => (
+                  <li 
+                    key={i} 
+                    className={`flex gap-3 ${isAssistant ? 'animate-fade-slide-up' : ''}`}
+                    style={isAssistant ? { animationDelay: `${(idx * items.length + i) * 50}ms` } : undefined}
+                  >
+                    <span className="text-primary shrink-0 mt-0.5">•</span>
+                    <span className="text-foreground/90 leading-relaxed">
+                      {cleanMarkdown(item.replace(/^[-•]\s*/, ''))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+          // Regular paragraph
+          else if (paragraph.trim()) {
+            return (
+              <p 
+                key={idx} 
+                className={`text-foreground/90 leading-relaxed ${isAssistant ? 'animate-fade-slide-up' : ''}`}
+                style={isAssistant ? { animationDelay: `${idx * 50}ms` } : undefined}
+              >
+                {paragraph}
+              </p>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
+    <div className="flex flex-col h-full bg-background">
+      {/* Minimal Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/10">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="btn-glow hover:bg-secondary/50"
+          className="hover:bg-secondary/30 -ml-2"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          <span className="text-sm">Back</span>
         </Button>
 
-        <span className="text-sm font-medium text-foreground">Pit Lane Talk</span>
+        <span className="text-sm font-medium text-foreground/80">Pit Lane Talk</span>
 
         <div className="flex items-center gap-1">
           {messages.length > 0 && (
@@ -284,10 +360,10 @@ const PitLaneTalk = ({
               variant="ghost"
               size="sm"
               onClick={handleOpenCrewsTake}
-              className="relative btn-glow hover:bg-secondary/50 text-xs gap-1"
+              className="relative hover:bg-secondary/30 text-xs gap-1"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Crew's Take</span>
+              <span className="hidden sm:inline">Summary</span>
               {hasCrewsTakeUpdate && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
               )}
@@ -297,40 +373,46 @@ const PitLaneTalk = ({
             variant="ghost"
             size="sm"
             onClick={handleNewChat}
-            className="btn-glow hover:bg-secondary/50"
+            className="hover:bg-secondary/30"
           >
             <MessageSquarePlus className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Content */}
-      {isEmpty ? (
-        <div className="flex-1 flex flex-col px-4 overflow-y-auto">
-          {/* Assistant header card */}
-          <div className="w-full max-w-xl mx-auto pt-4">
-            <div className="bg-card/80 border border-border/30 rounded-2xl p-4 animate-fade-slide-up">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Headphones className="w-5 h-5 text-primary" />
+      {/* Messages Area - Edge to edge, page scroll */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+      >
+        {isEmpty ? (
+          <div className="flex flex-col h-full">
+            {/* Welcome section */}
+            <div className="px-4 pt-8 pb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Wrench className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-foreground font-brand">Pit Lane Talk</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Quick car advice, just like messaging your pit engineer.
-                  </p>
+                  <h2 className="text-lg font-semibold text-foreground font-brand">Pit Lane Talk</h2>
+                  <p className="text-sm text-muted-foreground">Your automotive expert</p>
                 </div>
               </div>
+              
+              <p className="text-sm text-muted-foreground/80 leading-relaxed mb-6">
+                Ask anything about your car. I can help with maintenance advice, 
+                explain how things work, or help diagnose issues through conversation.
+              </p>
 
-              {/* Suggestion chips inside card */}
+              {/* Suggestion chips */}
               <div className="space-y-2">
-                <span className="text-xs text-muted-foreground/60">Try asking about</span>
+                <span className="text-xs text-muted-foreground/50 uppercase tracking-wide">Try asking</span>
                 <div className="flex flex-wrap gap-2">
                   {suggestionChips.map((chip) => (
                     <button
                       key={chip.label}
                       onClick={() => handleChipClick(chip.query)}
-                      className="px-3 py-1.5 text-sm rounded-full border border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                      className="px-3 py-1.5 text-sm rounded-full border border-border/30 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
                     >
                       {chip.label}
                     </button>
@@ -339,83 +421,76 @@ const PitLaneTalk = ({
               </div>
             </div>
           </div>
-
-          {/* Empty state hint */}
-          <div className="flex-1 flex items-start justify-center pt-8">
-            <p className="text-xs text-muted-foreground/30">
-              Ask anything about your car to get started.
-            </p>
-          </div>
-
-          {/* Input at bottom */}
-          <div className="mt-auto pb-4 w-full max-w-xl mx-auto">
-            <ChatInput
-              onSend={handleSend}
-              disabled={isLoading}
-              showMic
-              placeholder="Ask anything about your car..."
-              variant="secondary"
-            />
-          </div>
-        </div>
-      ) : (
-        <>
-          {isLoading && <div className="progress-bar absolute top-0 left-0 right-0 z-50" />}
-
-          <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6">
-            <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
-              {messages.map((msg, idx) => (
-                <ChatMessage
-                  key={idx}
-                  role={msg.role}
-                  content={msg.content}
-                  images={msg.images}
-                />
-              ))}
-
-              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border/40">
-                    <Car className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="message-assistant">
-                    <p className="text-xs text-muted-foreground mb-2">Thinking...</p>
-                    <div className="flex gap-1.5">
-                      <div
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                        style={{ animationDelay: "0ms" }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                        style={{ animationDelay: "150ms" }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                        style={{ animationDelay: "300ms" }}
-                      />
+        ) : (
+          <div className="py-4">
+            {messages.map((msg, idx) => (
+              <div 
+                key={idx}
+                className={`px-4 py-3 ${
+                  msg.role === "user" 
+                    ? "bg-secondary/20" 
+                    : "bg-transparent"
+                }`}
+              >
+                <div className="max-w-[95vw] mx-auto">
+                  {/* Images if any */}
+                  {msg.images && msg.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {msg.images.map((img, imgIdx) => (
+                        <img
+                          key={imgIdx}
+                          src={img}
+                          alt={`Upload ${imgIdx + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg"
+                        />
+                      ))}
                     </div>
+                  )}
+                  
+                  {/* Message content */}
+                  <div className="text-[15px] leading-[1.6]">
+                    {renderMessageContent(msg.content, msg.role === "assistant")}
                   </div>
                 </div>
-              )}
+              </div>
+            ))}
 
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
+            {/* Loading indicator */}
+            {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+              <div className="px-4 py-3">
+                <div className="max-w-[95vw] mx-auto">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <span className="text-sm">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {/* Input - docked at bottom */}
-          <div className="border-t border-border/20 bg-background/80 backdrop-blur-sm shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
-            <div className="max-w-3xl mx-auto w-full px-4 py-3">
-              <ChatInput
-                onSend={handleSend}
-                disabled={isLoading}
-                showMic
-                placeholder="Ask anything about your car..."
-                variant="secondary"
-              />
-            </div>
+            <div ref={messagesEndRef} className="h-4" />
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      {/* Progress bar when loading */}
+      {isLoading && <div className="progress-bar absolute top-[52px] left-0 right-0 z-50" />}
+
+      {/* Fixed Input Bar */}
+      <div className="border-t border-border/10 bg-background">
+        <div className="max-w-[95vw] mx-auto px-4 py-3">
+          <ChatInput
+            onSend={handleSend}
+            disabled={isLoading}
+            showMic
+            placeholder="Ask anything about your car..."
+            variant="secondary"
+          />
+        </div>
+      </div>
 
       {/* Crew's Take Sheet */}
       <CrewsTakeSheet
