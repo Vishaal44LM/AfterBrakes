@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Car, FolderOpen } from "lucide-react";
+import { LogOut, Car } from "lucide-react";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import GaragePill from "@/components/GaragePill";
 import GarageSelector from "@/components/GarageSelector";
 import PitCrewCheckCard from "@/components/pitcrew/PitCrewCheckCard";
 import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
 import PitLaneTalk from "@/components/PitLaneTalk";
-import Glovebox from "@/components/Glovebox";
-import GloveboxBanner from "@/components/GloveboxBanner";
 import CarTriviaSnack from "@/components/CarTriviaSnack";
 import LightsOutCard from "@/components/LightsOutCard";
 import { Button } from "@/components/ui/button";
@@ -16,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import logo from "@/assets/logo.png";
 
-type AppMode = "home" | "pitcrew" | "chat" | "glovebox";
+type AppMode = "home" | "pitcrew" | "chat";
 
 interface ChatSession {
   messages: any[];
@@ -75,10 +73,6 @@ const Index = () => {
     setMode("chat");
   };
 
-  const handleOpenGlovebox = () => {
-    setMode("glovebox");
-  };
-
   const handleBack = () => {
     setMode("home");
     setChatSession({
@@ -99,7 +93,6 @@ const Index = () => {
 
   // Load check from history - for now just show in chat
   const handleLoadCheck = (loadedMessages: any[], chatId: string) => {
-    // Parse the stored data and show in chat mode for now
     setChatSession({
       messages: loadedMessages,
       chatId
@@ -179,14 +172,6 @@ const Index = () => {
               Tap to view vehicle history
             </button>
           </div>
-
-          {/* Glovebox banner for expiring documents */}
-          {user && (
-            <GloveboxBanner 
-              userId={user.id} 
-              onView={handleOpenGlovebox} 
-            />
-          )}
         </>
       )}
 
@@ -215,27 +200,6 @@ const Index = () => {
                 >
                   Open Pit Lane Talk →
                 </button>
-              </div>
-            </div>
-
-            {/* UTILITY ZONE: Glovebox */}
-            <div className="pt-2">
-              <div 
-                onClick={handleOpenGlovebox}
-                className="card-vignette p-4 cursor-pointer hover:bg-secondary/40 transition-colors animate-fade-slide-up group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-secondary/50 flex items-center justify-center">
-                      <FolderOpen className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Glovebox</h3>
-                      <p className="text-xs text-muted-foreground">Saved checks, PDFs & documents</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground/60">→</span>
-                </div>
               </div>
             </div>
 
@@ -279,13 +243,6 @@ const Index = () => {
           }}
           onNewChat={handleNewChat}
           prefillMessage={chatSession.prefillMessage}
-        />
-      )}
-
-      {mode === "glovebox" && user && (
-        <Glovebox
-          userId={user.id}
-          onBack={handleBack}
         />
       )}
 
