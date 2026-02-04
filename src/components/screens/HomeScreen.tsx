@@ -1,93 +1,115 @@
-import { Shield, ChevronRight, MessageCircle } from "lucide-react";
+import { Shield, MessageCircle, Car, History, Gamepad2 } from "lucide-react";
 import { Vehicle } from "@/hooks/useVehicles";
+import logo from "@/assets/logo.png";
 
 interface HomeScreenProps {
   vehicle: Vehicle | null;
   onOpenGarage: () => void;
   onStartDiagnose: () => void;
   onStartTalk: () => void;
+  onOpenHistory: () => void;
+  onOpenSideQuests: () => void;
 }
 
-const HomeScreen = ({ vehicle, onOpenGarage, onStartDiagnose, onStartTalk }: HomeScreenProps) => {
+const HomeScreen = ({ 
+  vehicle, 
+  onOpenGarage, 
+  onStartDiagnose, 
+  onStartTalk,
+  onOpenHistory,
+  onOpenSideQuests
+}: HomeScreenProps) => {
   return (
-    <div className="flex-1 flex flex-col px-4 pb-24">
-      {/* Vehicle Info */}
-      <div className="py-4 text-center">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-screen relative">
+      {/* Edge-placed secondary access - top corners */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+        <button
+          onClick={onOpenHistory}
+          className="flex items-center gap-2 px-3 py-2 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-secondary/30 transition-all text-sm"
+        >
+          <History className="w-4 h-4" />
+          <span className="hidden sm:inline">History</span>
+        </button>
+        
         <button
           onClick={onOpenGarage}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border/40 hover:border-primary/30 transition-all"
+          className="flex items-center gap-2 px-3 py-2 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-secondary/30 transition-all text-sm"
+        >
+          <Car className="w-4 h-4" />
+          <span className="hidden sm:inline">Garage</span>
+        </button>
+      </div>
+
+      {/* Side quests - deeply de-emphasized, bottom corner */}
+      <button
+        onClick={onOpenSideQuests}
+        className="absolute bottom-4 right-4 p-2 rounded-full text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary/20 transition-all"
+        title="Explore"
+      >
+        <Gamepad2 className="w-4 h-4" />
+      </button>
+
+      {/* Centered content container */}
+      <div className="w-full max-w-md flex flex-col items-center">
+        
+        {/* 1. Brand Identity Anchor */}
+        <div className="flex flex-col items-center mb-8">
+          <img src={logo} alt="After Brakes" className="w-16 h-16 mb-3" />
+          <h1 className="text-xl font-semibold text-foreground font-brand tracking-tight">
+            After Brakes
+          </h1>
+        </div>
+
+        {/* 2. Vehicle Context - subtle centered pill */}
+        <button
+          onClick={onOpenGarage}
+          className="mb-12 px-4 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           {vehicle ? (
-            <span className="text-sm text-foreground">
+            <span>
               {vehicle.manufacturer} {vehicle.model} · {vehicle.year}
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">Select vehicle</span>
+            <span className="text-muted-foreground/60">Select a vehicle</span>
           )}
         </button>
-      </div>
 
-      {/* Primary Core Action: Pit Crew Check */}
-      <div className="mt-4">
+        {/* 3. Primary Intelligence Action - Pit Crew Check */}
         <button
           onClick={onStartDiagnose}
-          className="w-full p-6 rounded-2xl bg-card border border-border/40 hover:border-primary/40 transition-all group text-left"
+          className="w-full mb-4 p-8 rounded-3xl bg-card/50 border border-border/30 hover:border-primary/40 hover:bg-card/80 transition-all group"
         >
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 group-hover:bg-primary/25 transition-colors">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
               <Shield className="w-7 h-7 text-primary" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-foreground">Pit Crew Check</h2>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Predict failure risks before they happen
-              </p>
-            </div>
-          </div>
-
-          {/* Visual hint */}
-          <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground/60">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-              Structured input analysis
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-              Failure timeline
-            </span>
+            <h2 className="text-lg font-semibold text-foreground mb-1">
+              Pit Crew Check
+            </h2>
+            <p className="text-sm text-muted-foreground/70">
+              Predict failure risks before they happen
+            </p>
           </div>
         </button>
-      </div>
 
-      {/* Secondary Core Action: Pit Lane Talk */}
-      <div className="mt-4">
+        {/* 4. Secondary Intelligence Action - Pit Lane Talk */}
         <button
           onClick={onStartTalk}
-          className="w-full p-4 rounded-xl bg-secondary/30 border border-border/20 hover:border-primary/30 transition-all group text-left"
+          className="w-full p-5 rounded-2xl hover:bg-secondary/20 transition-all group"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-              <MessageCircle className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+          <div className="flex flex-col items-center text-center">
+            <div className="w-10 h-10 rounded-xl bg-secondary/30 flex items-center justify-center mb-3 group-hover:bg-secondary/50 transition-colors">
+              <MessageCircle className="w-5 h-5 text-muted-foreground group-hover:text-foreground" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-base font-medium text-foreground">Pit Lane Talk</h3>
-              <p className="text-xs text-muted-foreground">
-                Ask anything about your car
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <h3 className="text-base font-medium text-foreground/80 mb-0.5">
+              Pit Lane Talk
+            </h3>
+            <p className="text-xs text-muted-foreground/60">
+              Ask anything about your car
+            </p>
           </div>
         </button>
-      </div>
 
-      {/* Minimal Status Line */}
-      <div className="mt-6 text-center">
-        <p className="text-xs text-muted-foreground/50">
-          Your automotive AI assistant
-        </p>
       </div>
     </div>
   );
