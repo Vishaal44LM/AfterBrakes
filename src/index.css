@@ -409,8 +409,13 @@
     }
     100% {
       box-shadow: 0 0 0 0 hsl(262 44% 43% / 0);
-    }
   }
+
+  /* Safe area for bottom navigation on iOS */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
 
   /* Voice waveform animation */
   .voice-waveform {
