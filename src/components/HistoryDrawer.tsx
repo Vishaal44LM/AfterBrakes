@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { History, Search, Wrench, MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, Wrench, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,10 +20,14 @@ type HistoryMode = "pitCrew" | "pitLane";
 interface HistoryDrawerProps {
   onLoadChat: (messages: any[], chatId: string) => void;
   onLoadCheck: (messages: any[], chatId: string) => void;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
-  const [open, setOpen] = useState(false);
+const HistoryDrawer = ({ onLoadChat, onLoadCheck, isOpen, onOpenChange }: HistoryDrawerProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen !== undefined ? isOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [chats, setChats] = useState<ChatHistory[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -121,15 +124,6 @@ const HistoryDrawer = ({ onLoadChat, onLoadCheck }: HistoryDrawerProps) => {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="btn-glow hover:bg-secondary/50 transition-smooth"
-        >
-          <History className="w-5 h-5" />
-        </Button>
-      </SheetTrigger>
       <SheetContent side="left" className="w-[90vw] md:w-[400px] bg-background border-r border-border/40 p-0">
         <div className="flex flex-col h-full">
           <SheetHeader className="p-4 md:p-6 border-b border-border/40">

@@ -1,21 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Car } from "lucide-react";
-import HistoryDrawer from "@/components/HistoryDrawer";
-import GaragePill from "@/components/GaragePill";
-import GarageSelector from "@/components/GarageSelector";
-import PitCrewCheckCard from "@/components/pitcrew/PitCrewCheckCard";
-import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
-import PitCrewHistoryResults from "@/components/pitcrew/PitCrewHistoryResults";
-import PitLaneTalk from "@/components/PitLaneTalk";
-import CarTriviaSnack from "@/components/CarTriviaSnack";
-import LightsOutCard from "@/components/LightsOutCard";
+import { LogOut, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import logo from "@/assets/logo.png";
 
-type AppMode = "home" | "pitcrew" | "pitcrew-results" | "chat";
+// Layout components
+import BottomNav from "@/components/layout/BottomNav";
+import SecondaryNav from "@/components/layout/SecondaryNav";
+
+// Screen components
+import HomeScreen from "@/components/screens/HomeScreen";
+import SideQuestsScreen from "@/components/screens/SideQuestsScreen";
+
+// Feature components
+import HistoryDrawer from "@/components/HistoryDrawer";
+import GarageSelector from "@/components/GarageSelector";
+import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
+import PitCrewHistoryResults from "@/components/pitcrew/PitCrewHistoryResults";
+import PitLaneTalk from "@/components/PitLaneTalk";
+
+type NavTab = "home" | "diagnose" | "talk";
 
 interface ChatSession {
   messages: any[];
@@ -30,9 +36,10 @@ interface PitCrewHistoryResult {
 }
 
 const Index = () => {
-  const [mode, setMode] = useState<AppMode>("home");
+  const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [showGarageSelector, setShowGarageSelector] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const [showSideQuests, setShowSideQuests] = useState(false);
   const [vehicleToast, setVehicleToast] = useState<string | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession>({
     messages: [],
@@ -40,6 +47,7 @@ const Index = () => {
     prefillMessage: undefined
   });
   const [pitCrewHistory, setPitCrewHistory] = useState<PitCrewHistoryResult | null>(null);
+  const [showPitCrewResults, setShowPitCrewResults] = useState(false);
 
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -68,8 +76,12 @@ const Index = () => {
     setVehicleToast(`Now diagnosing: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year}`);
   };
 
-  const handleStartPitCrewCheck = () => {
-    setMode("pitcrew");
+  const handleTabChange = (tab: NavTab) => {
+    // Reset states when changing tabs
+    setChatSession({ messages: [], chatId: null, prefillMessage: undefined });
+    setPitCrewHistory(null);
+    setShowPitCrewResults(false);
+    setActiveTab(tab);
   };
 
   const handleOpenChat = (prefillMessage?: string) => {
@@ -78,17 +90,14 @@ const Index = () => {
       chatId: null,
       prefillMessage
     });
-    setMode("chat");
+    setActiveTab("talk");
   };
 
-  const handleBack = () => {
-    setMode("home");
-    setChatSession({
-      messages: [],
-      chatId: null,
-      prefillMessage: undefined
-    });
+  const handleBackToHome = () => {
+    setChatSession({ messages: [], chatId: null, prefillMessage: undefined });
     setPitCrewHistory(null);
+    setShowPitCrewResults(false);
+    setActiveTab("home");
   };
 
   // Load chat from history - opens Pit Lane Talk with existing messages
@@ -97,12 +106,11 @@ const Index = () => {
       messages: loadedMessages,
       chatId
     });
-    setMode("chat");
+    setActiveTab("talk");
   };
 
   // Load check from history - parse and show results view
   const handleLoadCheck = (loadedMessages: any[], chatId: string) => {
-    // Parse the pit crew check result from stored messages
     const assistantMsg = loadedMessages.find((m: any) => m.role === "assistant");
     if (assistantMsg?.content) {
       try {
@@ -113,16 +121,16 @@ const Index = () => {
             inputStrength: data.inputStrength || 70,
             overallAssessment: data.overallAssessment || "Risk analysis from history"
           });
-          setMode("pitcrew-results");
+          setShowPitCrewResults(true);
+          setActiveTab("diagnose");
           return;
         }
       } catch {
         // Not JSON, fallback to chat
       }
     }
-    // Fallback to chat mode
     setChatSession({ messages: loadedMessages, chatId });
-    setMode("chat");
+    setActiveTab("talk");
   };
 
   const handleNewChat = () => {
@@ -130,6 +138,15 @@ const Index = () => {
       messages: [],
       chatId: null
     });
+  };
+
+  const handleDiagnoseComplete = () => {
+    setActiveTab("home");
+  };
+
+  const handleStartNewCheck = () => {
+    setPitCrewHistory(null);
+    setShowPitCrewResults(false);
   };
 
   if (loading) {
@@ -142,144 +159,131 @@ const Index = () => {
     );
   }
 
-  return (
-    <div className="flex flex-col h-screen bg-background relative">
-      <div className="seam-line absolute top-0 left-0 right-0" />
+  // Side Quests Screen (overlay)
+  if (showSideQuests) {
+    return (
+      <div className="flex flex-col h-screen bg-background">
+        <SideQuestsScreen onBack={() => setShowSideQuests(false)} />
+      </div>
+    );
+  }
 
-      {/* Header - only show on home */}
-      {mode === "home" && (
-        <>
-          <header className="flex items-center justify-between px-4 py-3 mx-4 mt-4 mb-2 panel-floating">
-            {/* Left: Logo and title */}
-            <div className="flex items-center gap-2">
-              <img src={logo} alt="After Brakes" className="w-8 h-8" />
-              <h1 className="text-base font-semibold text-foreground font-brand">
-                After Brakes
-              </h1>
-            </div>
-
-            {/* Right: History, Garage, Logout icons */}
-            <div className="flex items-center gap-1">
-              <HistoryDrawer onLoadChat={handleLoadChat} onLoadCheck={handleLoadCheck} />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowGarageSelector(true)}
-                className="btn-glow hover:bg-secondary/50 transition-smooth"
-                title="Your Garage"
-              >
-                <Car className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={signOut}
-                className="btn-glow hover:bg-secondary/50 transition-smooth"
-                title="Sign out"
-              >
-                <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-              </Button>
-            </div>
-          </header>
-
-          {/* Vehicle pill with last activity */}
-          <div className="px-4 mb-3">
-            <GaragePill
-              vehicle={activeVehicle}
-              onClick={() => setShowGarageSelector(true)}
-              className="text-center"
-            />
-            {/* Last activity status line */}
-            <button 
-              onClick={() => setShowHistoryDrawer(true)}
-              className="w-full text-center mt-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-            >
-              Tap to view vehicle history
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Vehicle toast notification */}
-      {vehicleToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
-          <span className="text-sm text-foreground">{vehicleToast}</span>
-        </div>
-      )}
-
-      {/* Main content based on mode */}
-      {mode === "home" && (
-        <div className="flex-1 flex flex-col items-center pt-2 md:pt-6 overflow-y-auto pb-8">
-          <div className="w-full max-w-2xl mx-auto px-4 space-y-6">
-            
-            {/* CORE ZONE: Pit Crew Check Card */}
-            <div className="space-y-4">
-              <PitCrewCheckCard onStart={handleStartPitCrewCheck} />
-              
-              {/* Pit Lane Talk link */}
-              <div className="flex items-center justify-center py-2 animate-fade-slide-up" style={{ animationDelay: "100ms" }}>
-                <span className="text-sm text-muted-foreground">Just have a quick question?</span>
-                <button
-                  onClick={() => handleOpenChat()}
-                  className="ml-2 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
-                >
-                  Open Pit Lane Talk →
-                </button>
-              </div>
-            </div>
-
-            {/* FUN ZONE: Between drives */}
-            <div className="pt-4 space-y-3">
-              {/* Section header */}
-              <div className="px-1">
-                <h2 className="text-sm font-medium text-foreground/80">Between drives</h2>
-                <p className="text-xs text-muted-foreground/50">Quick challenges and tips while you're not at the wheel</p>
-              </div>
-
-              {/* Fun cards - reduced height */}
-              <div className="space-y-3">
-                <LightsOutCard />
-                <CarTriviaSnack />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mode === "pitcrew" && user && (
-        <PitCrewCheckWizard
-          vehicle={activeVehicle}
-          userId={user.id}
-          onBack={handleBack}
-          onOpenChat={handleOpenChat}
-          onComplete={handleBack}
-        />
-      )}
-
-      {mode === "chat" && user && (
-        <PitLaneTalk
-          vehicle={activeVehicle}
-          userId={user.id}
-          initialMessages={chatSession.messages}
-          chatId={chatSession.chatId}
-          onBack={handleBack}
-          onStartGuidedCheck={() => {
-            setMode("pitcrew");
-          }}
-          onNewChat={handleNewChat}
-          prefillMessage={chatSession.prefillMessage}
-        />
-      )}
-
-      {mode === "pitcrew-results" && pitCrewHistory && (
+  // Pit Crew History Results view
+  if (showPitCrewResults && pitCrewHistory) {
+    return (
+      <div className="flex flex-col h-screen bg-background">
         <PitCrewHistoryResults
           risks={pitCrewHistory.risks}
           inputStrength={pitCrewHistory.inputStrength}
           overallAssessment={pitCrewHistory.overallAssessment}
-          onBack={handleBack}
-          onStartNew={handleStartPitCrewCheck}
+          onBack={handleBackToHome}
+          onStartNew={handleStartNewCheck}
         />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-background relative">
+      <div className="seam-line absolute top-0 left-0 right-0" />
+
+      {/* Header - Always visible */}
+      <header className="flex items-center justify-between px-4 py-3">
+        {/* Left: Logo and title */}
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="After Brakes" className="w-8 h-8" />
+          <h1 className="text-base font-semibold text-foreground font-brand">
+            After Brakes
+          </h1>
+        </div>
+
+        {/* Right: Secondary Nav + Side Quests + Logout */}
+        <div className="flex items-center gap-1">
+          <SecondaryNav 
+            onOpenGarage={() => setShowGarageSelector(true)}
+            onOpenHistory={() => setShowHistoryDrawer(true)}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowSideQuests(true)}
+            className="h-8 w-8 hover:bg-secondary/50 transition-smooth"
+            title="Games & Trivia"
+          >
+            <Gamepad2 className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={signOut}
+            className="h-8 w-8 hover:bg-secondary/50 transition-smooth"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+          </Button>
+        </div>
+      </header>
+
+      {/* Vehicle toast notification */}
+      {vehicleToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
+          <span className="text-sm text-foreground">{vehicleToast}</span>
+        </div>
       )}
+
+      {/* Main content based on active tab */}
+      <main className="flex-1 overflow-hidden">
+        {activeTab === "home" && (
+          <HomeScreen
+            vehicle={activeVehicle}
+            onOpenGarage={() => setShowGarageSelector(true)}
+            onStartDiagnose={() => setActiveTab("diagnose")}
+            onStartTalk={() => setActiveTab("talk")}
+          />
+        )}
+
+        {activeTab === "diagnose" && user && (
+          <PitCrewCheckWizard
+            vehicle={activeVehicle}
+            userId={user.id}
+            onBack={handleBackToHome}
+            onOpenChat={handleOpenChat}
+            onComplete={handleDiagnoseComplete}
+          />
+        )}
+
+        {activeTab === "talk" && user && (
+          <PitLaneTalk
+            vehicle={activeVehicle}
+            userId={user.id}
+            initialMessages={chatSession.messages}
+            chatId={chatSession.chatId}
+            onBack={handleBackToHome}
+            onStartGuidedCheck={() => setActiveTab("diagnose")}
+            onNewChat={handleNewChat}
+            prefillMessage={chatSession.prefillMessage}
+          />
+        )}
+      </main>
+
+      {/* Bottom Navigation - Only show on home */}
+      {activeTab === "home" && (
+        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      )}
+
+      {/* History Drawer */}
+      <HistoryDrawer 
+        isOpen={showHistoryDrawer}
+        onOpenChange={setShowHistoryDrawer}
+        onLoadChat={(messages, id) => {
+          handleLoadChat(messages, id);
+          setShowHistoryDrawer(false);
+        }} 
+        onLoadCheck={(messages, id) => {
+          handleLoadCheck(messages, id);
+          setShowHistoryDrawer(false);
+        }} 
+      />
 
       {/* Modals */}
       {showGarageSelector && user && (
