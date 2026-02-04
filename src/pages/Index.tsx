@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Gamepad2 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVehicles, Vehicle } from "@/hooks/useVehicles";
 import logo from "@/assets/logo.png";
-
-// Layout components
-import BottomNav from "@/components/layout/BottomNav";
-import SecondaryNav from "@/components/layout/SecondaryNav";
 
 // Screen components
 import HomeScreen from "@/components/screens/HomeScreen";
@@ -184,45 +180,17 @@ const Index = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background relative">
-      <div className="seam-line absolute top-0 left-0 right-0" />
-
-      {/* Header - Always visible */}
-      <header className="flex items-center justify-between px-4 py-3">
-        {/* Left: Logo and title */}
-        <div className="flex items-center gap-2">
-          <img src={logo} alt="After Brakes" className="w-8 h-8" />
-          <h1 className="text-base font-semibold text-foreground font-brand">
-            After Brakes
-          </h1>
-        </div>
-
-        {/* Right: Secondary Nav + Side Quests + Logout */}
-        <div className="flex items-center gap-1">
-          <SecondaryNav 
-            onOpenGarage={() => setShowGarageSelector(true)}
-            onOpenHistory={() => setShowHistoryDrawer(true)}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowSideQuests(true)}
-            className="h-8 w-8 hover:bg-secondary/50 transition-smooth"
-            title="Games & Trivia"
-          >
-            <Gamepad2 className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={signOut}
-            className="h-8 w-8 hover:bg-secondary/50 transition-smooth"
-            title="Sign out"
-          >
-            <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-          </Button>
-        </div>
-      </header>
+    <div className="flex flex-col min-h-screen bg-background relative">
+      {/* Logout - minimal, top-right absolute */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={signOut}
+        className="absolute top-4 right-4 z-50 h-8 w-8 text-muted-foreground/40 hover:text-foreground hover:bg-secondary/30 transition-all"
+        title="Sign out"
+      >
+        <LogOut className="w-4 h-4" />
+      </Button>
 
       {/* Vehicle toast notification */}
       {vehicleToast && (
@@ -239,6 +207,8 @@ const Index = () => {
             onOpenGarage={() => setShowGarageSelector(true)}
             onStartDiagnose={() => setActiveTab("diagnose")}
             onStartTalk={() => setActiveTab("talk")}
+            onOpenHistory={() => setShowHistoryDrawer(true)}
+            onOpenSideQuests={() => setShowSideQuests(true)}
           />
         )}
 
@@ -265,11 +235,6 @@ const Index = () => {
           />
         )}
       </main>
-
-      {/* Bottom Navigation - Only show on home */}
-      {activeTab === "home" && (
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-      )}
 
       {/* History Drawer */}
       <HistoryDrawer 
