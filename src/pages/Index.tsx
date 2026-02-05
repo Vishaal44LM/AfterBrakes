@@ -16,8 +16,10 @@ import GarageSelector from "@/components/GarageSelector";
 import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
 import PitCrewHistoryResults from "@/components/pitcrew/PitCrewHistoryResults";
 import PitLaneTalk from "@/components/PitLaneTalk";
+ import LightsOutCard from "@/components/LightsOutCard";
+ import CarTriviaSnack from "@/components/CarTriviaSnack";
 
-type NavTab = "home" | "diagnose" | "talk";
+ type NavTab = "home" | "diagnose" | "talk" | "lights-out" | "drive-time-qa";
 
 interface ChatSession {
   messages: any[];
@@ -35,7 +37,6 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [showGarageSelector, setShowGarageSelector] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
-  const [showSideQuests, setShowSideQuests] = useState(false);
   const [vehicleToast, setVehicleToast] = useState<string | null>(null);
   const [chatSession, setChatSession] = useState<ChatSession>({
     messages: [],
@@ -155,15 +156,6 @@ const Index = () => {
     );
   }
 
-  // Side Quests Screen (overlay)
-  if (showSideQuests) {
-    return (
-      <div className="flex flex-col h-screen bg-background">
-        <SideQuestsScreen onBack={() => setShowSideQuests(false)} />
-      </div>
-    );
-  }
-
   // Pit Crew History Results view
   if (showPitCrewResults && pitCrewHistory) {
     return (
@@ -180,27 +172,25 @@ const Index = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative">
-      {/* Logout - minimal, top-right absolute */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={signOut}
-        className="absolute top-4 right-4 z-50 h-8 w-8 text-muted-foreground/40 hover:text-foreground hover:bg-secondary/30 transition-all"
-        title="Sign out"
-      >
-        <LogOut className="w-4 h-4" />
-      </Button>
-
+     <div className="relative min-h-screen bg-background">
       {/* Vehicle toast notification */}
       {vehicleToast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
+         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-primary/30 rounded-full shadow-lg shadow-primary/20 animate-fade-slide-up">
           <span className="text-sm text-foreground">{vehicleToast}</span>
         </div>
       )}
 
-      {/* Main content based on active tab */}
-      <main className="flex-1 overflow-hidden">
+       {/* Logout button - floating */}
+       <Button
+         variant="ghost"
+         size="icon"
+         onClick={signOut}
+         className="fixed top-4 right-4 z-40 h-8 w-8 text-muted-foreground/30 hover:text-foreground hover:bg-secondary/30 transition-all"
+         title="Sign out"
+       >
+         <LogOut className="w-4 h-4" />
+       </Button>
+ 
         {activeTab === "home" && (
           <HomeScreen
             vehicle={activeVehicle}
@@ -208,7 +198,9 @@ const Index = () => {
             onStartDiagnose={() => setActiveTab("diagnose")}
             onStartTalk={() => setActiveTab("talk")}
             onOpenHistory={() => setShowHistoryDrawer(true)}
-            onOpenSideQuests={() => setShowSideQuests(true)}
+             onOpenSideQuests={() => {}}
+             onOpenLightsOut={() => setActiveTab("lights-out")}
+             onOpenDriveTimeQA={() => setActiveTab("drive-time-qa")}
           />
         )}
 
@@ -234,7 +226,34 @@ const Index = () => {
             prefillMessage={chatSession.prefillMessage}
           />
         )}
-      </main>
+ 
+         {activeTab === "lights-out" && (
+           <div className="fixed inset-0 bg-background z-30 flex flex-col">
+             <div className="flex-1 overflow-auto p-4">
+               <button
+                 onClick={handleBackToHome}
+                 className="mb-4 text-muted-foreground hover:text-foreground transition-colors text-sm"
+               >
+                 ← Back
+               </button>
+               <LightsOutCard />
+             </div>
+           </div>
+         )}
+ 
+         {activeTab === "drive-time-qa" && (
+           <div className="fixed inset-0 bg-background z-30 flex flex-col">
+             <div className="flex-1 overflow-auto p-4">
+               <button
+                 onClick={handleBackToHome}
+                 className="mb-4 text-muted-foreground hover:text-foreground transition-colors text-sm"
+               >
+                 ← Back
+               </button>
+               <CarTriviaSnack />
+             </div>
+           </div>
+         )}
 
       {/* History Drawer */}
       <HistoryDrawer 
