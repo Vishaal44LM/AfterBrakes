@@ -17,7 +17,7 @@ import PitCrewCheckWizard from "@/components/pitcrew/PitCrewCheckWizard";
 import PitCrewHistoryResults from "@/components/pitcrew/PitCrewHistoryResults";
 import PitLaneTalk from "@/components/PitLaneTalk";
  import LightsOutCard from "@/components/LightsOutCard";
- import CarTriviaSnack from "@/components/CarTriviaSnack";
+ import DriveTimeQuiz from "@/components/quiz/DriveTimeQuiz";
 
  type NavTab = "home" | "diagnose" | "talk" | "lights-out" | "drive-time-qa";
 
@@ -180,18 +180,7 @@ const Index = () => {
         </div>
       )}
 
-       {/* Logout button - floating */}
-       <Button
-         variant="ghost"
-         size="icon"
-         onClick={signOut}
-         className="fixed top-4 right-4 z-40 h-8 w-8 text-muted-foreground/30 hover:text-foreground hover:bg-secondary/30 transition-all"
-         title="Sign out"
-       >
-         <LogOut className="w-4 h-4" />
-       </Button>
- 
-        {activeTab === "home" && (
+       {activeTab === "home" && (
           <HomeScreen
             vehicle={activeVehicle}
             onOpenGarage={() => setShowGarageSelector(true)}
@@ -201,6 +190,7 @@ const Index = () => {
              onOpenSideQuests={() => {}}
              onOpenLightsOut={() => setActiveTab("lights-out")}
              onOpenDriveTimeQA={() => setActiveTab("drive-time-qa")}
+             onLogout={signOut}
           />
         )}
 
@@ -241,18 +231,8 @@ const Index = () => {
            </div>
          )}
  
-         {activeTab === "drive-time-qa" && (
-           <div className="fixed inset-0 bg-background z-30 flex flex-col">
-             <div className="flex-1 overflow-auto p-4">
-               <button
-                 onClick={handleBackToHome}
-                 className="mb-4 text-muted-foreground hover:text-foreground transition-colors text-sm"
-               >
-                 ← Back
-               </button>
-               <CarTriviaSnack />
-             </div>
-           </div>
+         {activeTab === "drive-time-qa" && user && (
+           <DriveTimeQuiz userId={user.id} onBack={handleBackToHome} />
          )}
 
       {/* History Drawer */}

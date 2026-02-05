@@ -339,7 +339,7 @@ const PitLaneTalk = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="fixed inset-0 flex flex-col bg-background z-30">
       {/* Minimal Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/10">
         <Button
@@ -383,7 +383,7 @@ const PitLaneTalk = ({
       {/* Messages Area - Edge to edge, page scroll */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto pb-20"
       >
         {isEmpty ? (
           <div className="flex flex-col h-full">
@@ -476,11 +476,8 @@ const PitLaneTalk = ({
         )}
       </div>
 
-      {/* Progress bar when loading */}
-      {isLoading && <div className="progress-bar absolute top-[52px] left-0 right-0 z-50" />}
-
-      {/* Fixed Input Bar */}
-      <div className="border-t border-border/10 bg-background">
+      {/* Fixed Input Bar at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border/10 bg-background safe-area-bottom">
         <div className="max-w-[95vw] mx-auto px-4 py-3">
           <ChatInput
             onSend={handleSend}
@@ -491,6 +488,9 @@ const PitLaneTalk = ({
           />
         </div>
       </div>
+
+      {/* Progress bar when loading */}
+      {isLoading && <div className="progress-bar fixed top-[52px] left-0 right-0 z-50" />}
 
       {/* Crew's Take Sheet */}
       <CrewsTakeSheet

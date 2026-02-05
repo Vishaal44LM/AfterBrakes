@@ -124,6 +124,54 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_progress: {
+        Row: {
+          answered_question_ids: string[]
+          best_streak: number
+          correct_answers: number
+          created_at: string
+          current_streak: number
+          daily_plays_today: number
+          daily_reset_date: string
+          id: string
+          last_played_at: string | null
+          total_questions_answered: number
+          unlocked_difficulty: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answered_question_ids?: string[]
+          best_streak?: number
+          correct_answers?: number
+          created_at?: string
+          current_streak?: number
+          daily_plays_today?: number
+          daily_reset_date?: string
+          id?: string
+          last_played_at?: string | null
+          total_questions_answered?: number
+          unlocked_difficulty?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answered_question_ids?: string[]
+          best_streak?: number
+          correct_answers?: number
+          created_at?: string
+          current_streak?: number
+          daily_plays_today?: number
+          daily_reset_date?: string
+          id?: string
+          last_played_at?: string | null
+          total_questions_answered?: number
+          unlocked_difficulty?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           created_at: string

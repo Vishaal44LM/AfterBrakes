@@ -1,4 +1,4 @@
- import { Shield, MessageCircle, Car, History, Zap, HelpCircle } from "lucide-react";
+ import { Shield, MessageCircle, Car, History, Zap, HelpCircle, LogOut } from "lucide-react";
  import { Vehicle } from "@/hooks/useVehicles";
  import logo from "@/assets/logo.png";
  
@@ -11,6 +11,7 @@
    onOpenSideQuests: () => void;
    onOpenLightsOut?: () => void;
    onOpenDriveTimeQA?: () => void;
+   onLogout?: () => void;
  }
  
  const HomeScreen = ({ 
@@ -20,7 +21,8 @@
    onStartTalk,
    onOpenHistory,
    onOpenLightsOut,
-   onOpenDriveTimeQA
+   onOpenDriveTimeQA,
+   onLogout
  }: HomeScreenProps) => {
    return (
      <div className="fixed inset-0 bg-background overflow-hidden">
@@ -95,6 +97,20 @@
              <span className="text-xs sm:text-sm font-medium text-foreground/70">Garage</span>
            </div>
          </button>
+
+           {/* Logout - BELOW GARAGE (Small) */}
+           {onLogout && (
+             <button
+               onClick={onLogout}
+               className="absolute left-[5%] sm:left-[15%] top-[65%] sm:top-[68%] opacity-40 hover:opacity-100 transition-opacity"
+               title="Sign out"
+             >
+               <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-secondary/20 transition-colors">
+                 <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+                 <span className="text-[10px] text-muted-foreground">Logout</span>
+               </div>
+             </button>
+           )}
  
          {/* History - RIGHT (Compact) */}
          <button

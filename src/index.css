@@ -514,6 +514,33 @@
      animation-delay: -5s;
    }
 
+  /* Shake animation for incorrect answers */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  /* Scale in animation */
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
   /* Safe area for bottom navigation on iOS */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
