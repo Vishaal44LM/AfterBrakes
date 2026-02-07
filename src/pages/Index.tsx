@@ -187,10 +187,10 @@ const Index = () => {
             onStartDiagnose={() => setActiveTab("diagnose")}
             onStartTalk={() => setActiveTab("talk")}
             onOpenHistory={() => setShowHistoryDrawer(true)}
-             onOpenSideQuests={() => {}}
-             onOpenLightsOut={() => setActiveTab("lights-out")}
-             onOpenDriveTimeQA={() => setActiveTab("drive-time-qa")}
-             onLogout={signOut}
+            onOpenSideQuests={() => {}}
+            onOpenLightsOut={() => setActiveTab("lights-out")}
+            onOpenDriveTimeQA={() => setActiveTab("drive-time-qa")}
+            onLogout={signOut}
           />
         )}
 
