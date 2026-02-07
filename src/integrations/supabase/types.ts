@@ -131,10 +131,25 @@ export type Database = {
           correct_answers: number
           created_at: string
           current_streak: number
+          daily_easy_plays: number
+          daily_hard_plays: number
+          daily_medium_plays: number
           daily_plays_today: number
           daily_reset_date: string
+          easy_answered: number
+          easy_correct: number
+          hard_answered: number
+          hard_correct: number
+          hard_unlocked_at: string | null
           id: string
           last_played_at: string | null
+          last_session_date: string | null
+          medium_answered: number
+          medium_correct: number
+          medium_sessions_completed: number
+          medium_unlocked_at: string | null
+          recently_seen_ids: string[]
+          topic_accuracy: Json
           total_questions_answered: number
           unlocked_difficulty: string[]
           updated_at: string
@@ -146,10 +161,25 @@ export type Database = {
           correct_answers?: number
           created_at?: string
           current_streak?: number
+          daily_easy_plays?: number
+          daily_hard_plays?: number
+          daily_medium_plays?: number
           daily_plays_today?: number
           daily_reset_date?: string
+          easy_answered?: number
+          easy_correct?: number
+          hard_answered?: number
+          hard_correct?: number
+          hard_unlocked_at?: string | null
           id?: string
           last_played_at?: string | null
+          last_session_date?: string | null
+          medium_answered?: number
+          medium_correct?: number
+          medium_sessions_completed?: number
+          medium_unlocked_at?: string | null
+          recently_seen_ids?: string[]
+          topic_accuracy?: Json
           total_questions_answered?: number
           unlocked_difficulty?: string[]
           updated_at?: string
@@ -161,10 +191,25 @@ export type Database = {
           correct_answers?: number
           created_at?: string
           current_streak?: number
+          daily_easy_plays?: number
+          daily_hard_plays?: number
+          daily_medium_plays?: number
           daily_plays_today?: number
           daily_reset_date?: string
+          easy_answered?: number
+          easy_correct?: number
+          hard_answered?: number
+          hard_correct?: number
+          hard_unlocked_at?: string | null
           id?: string
           last_played_at?: string | null
+          last_session_date?: string | null
+          medium_answered?: number
+          medium_correct?: number
+          medium_sessions_completed?: number
+          medium_unlocked_at?: string | null
+          recently_seen_ids?: string[]
+          topic_accuracy?: Json
           total_questions_answered?: number
           unlocked_difficulty?: string[]
           updated_at?: string
